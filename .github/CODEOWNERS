@@ -1,0 +1,11 @@
+# CODEOWNERS
+# These owners are automatically requested for review when someone opens a pull request
+# that changes code they own.
+
+# Default owners for everything
+* @Razaroth
+
+# Example granular ownership (customize if you add collaborators)
+# /game/ @Razaroth
+# /web/ @Razaroth
+# /networking/ @Razaroth
