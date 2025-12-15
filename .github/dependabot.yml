@@ -7,6 +7,16 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - dependencies
+    groups:
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+      actions-major:
+        applies-to: version-updates
+        update-types:
+          - major
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -19,3 +29,13 @@ updates:
     commit-message:
       prefix: "deps"
       include: "scope"
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+      pip-major:
+        applies-to: version-updates
+        update-types:
+          - major
