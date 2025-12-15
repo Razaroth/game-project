@@ -68,3 +68,8 @@ Thumbs.db
 *.log
 *.tmp
 *.swp
+
+# Local tooling artifacts
+.github_branch_protection.json
+bp_create.graphql.copy
+*.graphql
