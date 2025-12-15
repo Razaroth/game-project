@@ -193,13 +193,15 @@ def _start_mob_loop():
 # Ensure background loops start in production servers (e.g., Gunicorn on Render)
 _loops_started = False
 
-@app.before_first_request
 def _start_background_loops_once():
     global _loops_started
     if not _loops_started:
         _start_regen_loop()
         _start_mob_loop()
         _loops_started = True
+
+# Start background loops upon module import (Flask 3 removed before_first_request)
+_start_background_loops_once()
 
 
 @app.route('/')
