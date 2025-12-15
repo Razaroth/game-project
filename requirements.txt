@@ -8,3 +8,4 @@ python-dotenv>=1.0
 # Optional async workers for Socket.IO (choose one)
 eventlet>=0.35 ; platform_system != "Windows" or platform_system == "Windows"
 gevent>=23.9 ; platform_system != "Windows"
+gunicorn>=21.2

@@ -131,6 +131,71 @@ def _start_regen_loop():
     t.start()
 
 
+def _start_mob_loop():
+    import time
+    def loop():
+        while True:
+            try:
+                world.tick_roaming()
+                for username, player in list(web_players.items()):
+                    sid = getattr(player, 'address', None)
+                    if sid:
+                        socketio.emit('player_info', {
+                            'name': player.name,
+                            'race': player.race,
+                            'char_class': player.char_class,
+                            'level': player.level,
+                            'xp': player.xp,
+                            'xp_max': player.xp_max,
+                            'inventory': player.inventory,
+                            'equipment': getattr(player, 'equipment', {}),
+                            'hp': getattr(player, 'hp', 100),
+                            'energy': getattr(player, 'energy', 100),
+                            'endurance': getattr(player, 'endurance', 100),
+                            'willpower': getattr(player, 'willpower', 100),
+                            'strength': getattr(player, 'strength', 10),
+                            'tech': getattr(player, 'tech', 10),
+                            'speed': getattr(player, 'speed', 10),
+                            'abilities': getattr(player, 'abilities', []),
+                            'effects': [
+                                ('Red Eye', '+10% Attack') if getattr(player, 'attack_boost', 0) > 0 else None,
+                                ('Neon Blade', '+3 Atk, 15% Crit') if getattr(player, 'equipment', {}).get('weapon') == 'Neon Blade' else None
+                            ],
+                            'current_room': player.current_room,
+                            'rooms': world.rooms,
+                            'attack': player.get_attack() if hasattr(player, 'get_attack') else getattr(player, 'strength', 10),
+                            'attack_boost': getattr(player, 'attack_boost', 0),
+                            'fight_opponent': getattr(player, 'fight_opponent', None),
+                            'fight_hp': getattr(player, 'fight_hp', None),
+                            'room_info': {
+                                'name': player.current_room,
+                                'description': world.rooms[player.current_room]['description'],
+                                'exits': world.rooms[player.current_room]['exits'],
+                                'items': getattr(player, 'room_items', []),
+                                'npcs': world.get_npcs(player.current_room),
+                                'mobs': world.get_mobs_in_room(player.current_room)
+                            },
+                            'regen_enabled': (regen_enabled and not _is_in_fight(player))
+                        }, room=sid)
+                time.sleep(3)
+            except Exception:
+                time.sleep(3)
+    t = threading.Thread(target=loop, daemon=True)
+    t.start()
+
+
+# Ensure background loops start in production servers (e.g., Gunicorn on Render)
+_loops_started = False
+
+@app.before_first_request
+def _start_background_loops_once():
+    global _loops_started
+    if not _loops_started:
+        _start_regen_loop()
+        _start_mob_loop()
+        _loops_started = True
+
+
 @app.route('/')
 def index():
     # Always redirect to login if not authenticated
@@ -513,59 +578,6 @@ def handle_command_event(data):
             pass
 
 if __name__ == '__main__':
-    _start_regen_loop()
-    # Start roaming mob loop
-    def _start_mob_loop():
-        import time
-        def loop():
-            while True:
-                try:
-                    world.tick_roaming()
-                    # Optionally push room_info updates for connected players
-                    for username, player in list(web_players.items()):
-                        sid = getattr(player, 'address', None)
-                        if sid:
-                            socketio.emit('player_info', {
-                                'name': player.name,
-                                'race': player.race,
-                                'char_class': player.char_class,
-                                'level': player.level,
-                                'xp': player.xp,
-                                'xp_max': player.xp_max,
-                                'inventory': player.inventory,
-                                'equipment': getattr(player, 'equipment', {}),
-                                'hp': getattr(player, 'hp', 100),
-                                'energy': getattr(player, 'energy', 100),
-                                'endurance': getattr(player, 'endurance', 100),
-                                'willpower': getattr(player, 'willpower', 100),
-                                'strength': getattr(player, 'strength', 10),
-                                'tech': getattr(player, 'tech', 10),
-                                'speed': getattr(player, 'speed', 10),
-                                'abilities': getattr(player, 'abilities', []),
-                                'effects': [
-                                    ('Red Eye', '+10% Attack') if getattr(player, 'attack_boost', 0) > 0 else None,
-                                    ('Neon Blade', '+3 Atk, 15% Crit') if getattr(player, 'equipment', {}).get('weapon') == 'Neon Blade' else None
-                                ],
-                                'current_room': player.current_room,
-                                'rooms': world.rooms,
-                                'attack': player.get_attack() if hasattr(player, 'get_attack') else getattr(player, 'strength', 10),
-                                'attack_boost': getattr(player, 'attack_boost', 0),
-                                'fight_opponent': getattr(player, 'fight_opponent', None),
-                                'fight_hp': getattr(player, 'fight_hp', None),
-                                'room_info': {
-                                    'name': player.current_room,
-                                    'description': world.rooms[player.current_room]['description'],
-                                    'exits': world.rooms[player.current_room]['exits'],
-                                    'items': getattr(player, 'room_items', []),
-                                    'npcs': world.get_npcs(player.current_room),
-                                    'mobs': world.get_mobs_in_room(player.current_room)
-                                },
-                                'regen_enabled': (regen_enabled and not _is_in_fight(player))
-                            }, room=sid)
-                    time.sleep(3)
-                except Exception:
-                    time.sleep(3)
-        t = threading.Thread(target=loop, daemon=True)
-        t.start()
-    _start_mob_loop()
+    # Start background loops and run the development server
+    _start_background_loops_once()
     socketio.run(app, host='0.0.0.0', port=5000)

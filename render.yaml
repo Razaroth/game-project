@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: game-project
+    env: python
+    plan: free
+    region: oregon
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -k eventlet -w 1 -b 0.0.0.0:$PORT webui:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      # Optional mail settings; set values in Render dashboard if you plan to send mail
+      # - key: MAIL_SERVER
+      #   value: smtp.example.com
+      # - key: MAIL_PORT
+      #   value: 587
+      # - key: MAIL_USE_TLS
+      #   value: "true"
+      # - key: MAIL_USERNAME
+      #   value: ""
+      # - key: MAIL_PASSWORD
+      #   value: ""
+      # - key: MAIL_DEFAULT_SENDER
+      #   value: ""
