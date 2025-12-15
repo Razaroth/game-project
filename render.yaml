@@ -7,6 +7,10 @@ services:
     autoDeploy: true
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -k eventlet -w 1 -b 0.0.0.0:$PORT webui:app
+    disk:
+      name: game-project-disk
+      mountPath: .
+      sizeGB: 1
     envVars:
       - key: SECRET_KEY
         generateValue: true

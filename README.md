@@ -33,6 +33,7 @@ python webui.py
 - Accounts persist in `data/accounts.json`. Rooms are in `data/rooms.json`.
 - The map shows your current room with a pulsing X.
 - To stop the server: Ctrl+C in the terminal.
+ - On Render, persistence is enabled via a disk. The blueprint mounts a 1GB disk at the project root so `data/` survives restarts and deploys.
 
 ## Copilot Checklist
 - Verified `.github/copilot-instructions.md` exists with project tasks.
