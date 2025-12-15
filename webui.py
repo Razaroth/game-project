@@ -27,7 +27,13 @@ app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', 'your_email_password')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'your_email@example.com')
 
 mail = Mail(app)
-socketio = SocketIO(app, manage_session=False)
+# Explicit async mode for Render (eventlet) and permissive CORS for external clients
+socketio = SocketIO(
+    app,
+    manage_session=False,
+    async_mode='eventlet',
+    cors_allowed_origins='*'
+)
 
 # Test route to verify static file serving (must be after app is defined)
 @app.route('/test_cyberpunk_image')
