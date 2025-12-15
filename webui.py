@@ -203,7 +203,6 @@ def _start_background_loops_once():
 # Start background loops upon module import (Flask 3 removed before_first_request)
 _start_background_loops_once()
 
-
 @app.route('/')
 def index():
     # Always redirect to login if not authenticated
