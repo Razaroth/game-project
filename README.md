@@ -116,3 +116,4 @@ MIT
 
 ---
 This is a starting point. Expand and customize as you wish!
+\n+\nDeploy: trigger redeploy 2025-12-15
