@@ -923,24 +923,27 @@
                         }
                     }
                 }
-                // Draw nodes
+                // Draw nodes (wrap circle + label in a clickable group)
                 for (const [room, pos] of Object.entries(grid)) {
                     const cx = (pos.x - minX) * cell + pad;
                     const cy = (pos.y - minY) * cell + pad;
                     const isCurrent = room === currentRoom;
-                    content += `<circle cx=\"${cx}\" cy=\"${cy}\" r=\"18\" fill=\"${isCurrent?'#00ff99':'#222'}\" stroke=\"#00ff99\" stroke-width=\"2\" data-room=\"${room}\" style=\"cursor:pointer;\" />`;
+                    let node = '';
+                    node += `<circle cx=\"${cx}\" cy=\"${cy}\" r=\"18\" fill=\"${isCurrent?'#00ff99':'#222'}\" stroke=\"#00ff99\" stroke-width=\"2\" />`;
                     // Draw an animated neon X marker to highlight the player's current room
                     if (isCurrent) {
                         const xSize = 16;
                         const xStyle = `stroke-linecap:round; animation:pulseXStroke 1200ms ease-in-out infinite;`;
-                        content += `<line x1=\"${cx - xSize}\" y1=\"${cy - xSize}\" x2=\"${cx + xSize}\" y2=\"${cy + xSize}\" style=\"${xStyle}\" />`;
-                        content += `<line x1=\"${cx - xSize}\" y1=\"${cy + xSize}\" x2=\"${cx + xSize}\" y2=\"${cy - xSize}\" style=\"${xStyle}\" />`;
+                        node += `<line x1=\"${cx - xSize}\" y1=\"${cy - xSize}\" x2=\"${cx + xSize}\" y2=\"${cy + xSize}\" style=\"${xStyle}\" />`;
+                        node += `<line x1=\"${cx - xSize}\" y1=\"${cy + xSize}\" x2=\"${cx + xSize}\" y2=\"${cy - xSize}\" style=\"${xStyle}\" />`;
                     }
                     const full = prettyRoomName(room);
                     const label = full.length > 18 ? full.slice(0,17) + '…' : full;
                     const fillColor = isCurrent ? '#222' : '#caff70';
-                    content += `<text x=\"${cx}\" y=\"${cy+5}\" text-anchor=\"middle\" font-size=\"14\" font-family=\"Share Tech Mono, monospace\" stroke=\"#000\" stroke-width=\"3\" fill=\"none\">${label}</text>`;
-                    content += `<text x=\"${cx}\" y=\"${cy+5}\" text-anchor=\"middle\" font-size=\"14\" font-family=\"Share Tech Mono, monospace\" fill=\"${fillColor}\">${label}</text>`;
+                    // Make label non-interactive so clicks pass to circle/group beneath
+                    node += `<text x=\"${cx}\" y=\"${cy+5}\" text-anchor=\"middle\" font-size=\"14\" font-family=\"Share Tech Mono, monospace\" stroke=\"#000\" stroke-width=\"3\" fill=\"none\" style=\"pointer-events:none;\">${label}</text>`;
+                    node += `<text x=\"${cx}\" y=\"${cy+5}\" text-anchor=\"middle\" font-size=\"14\" font-family=\"Share Tech Mono, monospace\" fill=\"${fillColor}\" style=\"pointer-events:none;\">${label}</text>`;
+                    content += `<g data-room=\"${room}\" style=\"cursor:pointer;\">${node}</g>`;
                 }
                 // Wrap content with a centered transform to zoom about the midpoint
                 let svg = `<svg id=\"mud-map-svg\" width=\"100%\" height=\"100%\" viewBox=\"0 0 ${width} ${height}\" preserveAspectRatio=\"xMidYMid meet\" style=\"display:block;\">`;
@@ -953,7 +956,8 @@
                 mapArea.onclick = function(ev) {
                     if (window._mapDragging) return; // ignore click during drag
                     const target = ev.target;
-                    const roomTarget = target && target.getAttribute && target.getAttribute('data-room');
+                    const roomEl = target && target.closest ? target.closest('[data-room]') : null;
+                    const roomTarget = roomEl && roomEl.getAttribute ? roomEl.getAttribute('data-room') : (target && target.getAttribute && target.getAttribute('data-room'));
                     if (!roomTarget || roomTarget === currentRoom) return;
                     const exits = rooms[currentRoom]?.exits || {};
                     let dir = null;
