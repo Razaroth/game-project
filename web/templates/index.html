@@ -954,7 +954,8 @@
                 mapArea.innerHTML = svg;
                 // Click to move only if adjacent from current room
                 mapArea.onclick = function(ev) {
-                    if (window._mapDragging) return; // ignore click during drag
+                    // Only ignore clicks if actual dragging occurred
+                    if (window._mapDragging && window._mapDragMoved) return;
                     const target = ev.target;
                     const roomEl = target && target.closest ? target.closest('[data-room]') : null;
                     const roomTarget = roomEl && roomEl.getAttribute ? roomEl.getAttribute('data-room') : (target && target.getAttribute && target.getAttribute('data-room'));
@@ -971,8 +972,10 @@
                     window._mapDragInit = true;
                     let lastX = 0, lastY = 0;
                     let startPanX = 0, startPanY = 0;
+                    const dragThreshold = 4; // pixels before we consider it a drag
                     const onDown = (e) => {
                         window._mapDragging = true;
+                        window._mapDragMoved = false;
                         mapArea.style.cursor = 'grabbing';
                         const pt = (e.touches && e.touches[0]) ? e.touches[0] : e;
                         lastX = pt.clientX; lastY = pt.clientY;
@@ -985,6 +988,9 @@
                         const pt = (e.touches && e.touches[0]) ? e.touches[0] : e;
                         const dx = pt.clientX - lastX;
                         const dy = pt.clientY - lastY;
+                        if (Math.abs(dx) + Math.abs(dy) > dragThreshold) {
+                            window._mapDragMoved = true;
+                        }
                         // Convert screen delta to SVG units
                         const clientW = mapArea.clientWidth || 1;
                         const clientH = mapArea.clientHeight || 1;
