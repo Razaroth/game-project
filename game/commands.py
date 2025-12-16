@@ -157,6 +157,32 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                     return "You've already used the Vial of Red Eye."
             else:
                 return "You don't have a Vial of Red Eye to use."
+        elif command == "mobs":
+            # Diagnostics: list mobs in current and adjacent rooms
+            here_counts = {}
+            if hasattr(world, 'mobs_by_room'):
+                here_counts = dict(world.mobs_by_room.get(player.current_room, {}))
+            def fmt_counts(counts):
+                if not counts:
+                    return "None"
+                return ", ".join([f"{name} x{int(cnt)}" for name, cnt in counts.items()])
+            msg_lines = [f"Mobs here: {fmt_counts(here_counts)}"]
+            exits = world.rooms.get(player.current_room, {}).get('exits', {}) if hasattr(world, 'rooms') else {}
+            for dir_name, target in exits.items():
+                adj_counts = {}
+                if hasattr(world, 'mobs_by_room'):
+                    adj_counts = dict(world.mobs_by_room.get(target, {}))
+                if adj_counts:
+                    msg_lines.append(f"{dir_name} -> {target}: {fmt_counts(adj_counts)}")
+            return "\n".join(msg_lines)
+        elif command == "spawn gang":
+            # Diagnostics: spawn a Gang Member in the current room
+            if hasattr(world, 'mobs_by_room'):
+                world.mobs_by_room.setdefault(player.current_room, {})
+                world.mobs_by_room[player.current_room]['Gang Member'] = world.mobs_by_room[player.current_room].get('Gang Member', 0) + 1
+                return f"A Gang Member appears in {player.current_room}."
+            else:
+                return "Spawning mobs is not supported in this world."
     elif command.startswith("go "):
         direction = command[3:].strip()
         result = world.move_player(player, direction)
