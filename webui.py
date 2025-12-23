@@ -462,7 +462,7 @@ def handle_connect():
             except Exception:
                 pass
     web_players[username] = player
-    welcome = world.describe_room(player.current_room)
+    welcome = world.describe_room(player.current_room, entering=True)
     emit('message', {'data': f'Welcome {username}!\n{welcome}'})
     emit('player_info', {
         'name': player.name,

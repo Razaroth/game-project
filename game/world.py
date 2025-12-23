@@ -452,11 +452,118 @@ class World:
             inv.update(per_room[room_name])
         return inv
 
-    def describe_room(self, room_name):
+    def _ambient_candidates(self, room_name):
+        key = str(room_name or '')
+        by_room = {
+            'start': [
+                "Water drips somewhere in the dark, slow and patient.",
+                "The air tastes stale, like the room forgot how to breathe.",
+            ],
+            'hall': [
+                "Neon leaks through a crack overhead, painting the grime electric.",
+                "A distant siren Dopplers past, then fades into rain.",
+            ],
+            'neon_plaza': [
+                "Holograms jitter in the rain, each ad smiling a little too wide.",
+                "Your boots splash through a thin film of water and spilled light.",
+            ],
+            'rust_and_circuit': [
+                "Warm ozone and cheap synth-whiskey hang in the air.",
+                "The bar's speakers thrum like a second heartbeat.",
+            ],
+            'data_leak': [
+                "A dozen cracked screens reflect in your eyes like ghost windows.",
+                "You smell burnt circuitry and sweet neon cocktails.",
+            ],
+            'night_market': [
+                "Tarps snap in the wind while vendors whisper prices in code.",
+                "Somewhere nearby, a drone scans - then thinks better of it.",
+            ],
+            'black_market_bazaar': [
+                "Encrypted bids ping from pocket terminals like nervous heartbeats.",
+                "The crowd parts and closes again, an organism with a hundred eyes.",
+            ],
+            'club_nexus': [
+                "Bass rattles your teeth; lasers slice the fog into geometry.",
+                "The dance floor feels like a storm you can stand inside.",
+            ],
+            'holo_dive': [
+                "Old CRT glow bleeds into the corners, soft and hypnotic.",
+                "A booth hums beside you, running someone else's dream.",
+            ],
+            'corporate_lobby': [
+                "The air is too clean - filtered until it has no story.",
+                "Cameras track you with polite indifference.",
+            ],
+            'server_farm': [
+                "Coolant mist curls between racks like artificial fog.",
+                "The hum here isn't sound - it's pressure behind the eyes.",
+            ],
+            'underground_metro': [
+                "The tunnel breathes hot air and old electricity.",
+                "A train's scream echoes from nowhere and everywhere.",
+            ],
+            'scrapyard': [
+                "Rain ticks on rusted metal like thousands of tiny fingers.",
+                "Something sparks in a heap and dies again.",
+            ],
+        }
+
+        if key in by_room:
+            return by_room[key]
+
+        lower = key.lower()
+        if any(s in lower for s in ('alley', 'back_alley', 'neon_alley')):
+            return [
+                "Steam hisses from vents, carrying the smell of oil and wet concrete.",
+                "Graffiti flickers as you pass, reactive inks watching you back.",
+            ]
+        if any(s in lower for s in ('street', 'avenue', 'plaza')):
+            return [
+                "Neon reflections pool at your feet like liquid color.",
+                "Drones buzz overhead, their lights blinking in patient patterns.",
+            ]
+        if any(s in lower for s in ('market', 'bazaar')):
+            return [
+                "A dozen languages collide in whispers and hurried deals.",
+                "You catch the scent of hot wire, spice, and counterfeit plastic.",
+            ]
+        if any(s in lower for s in ('club', 'reactor')):
+            return [
+                "Music hits you first, then the air, then the lights.",
+                "Your skin prickles as the room syncs to a beat you didn't choose.",
+            ]
+        if any(s in lower for s in ('corporate', 'arcology', 'server')):
+            return [
+                "Everything here is engineered - even the silence.",
+                "Somewhere above, a system decides whether you belong.",
+            ]
+        if any(s in lower for s in ('underground', 'metro', 'scrapyard')):
+            return [
+                "The city sounds different down here - hollow, hungry.",
+                "Your footsteps echo longer than they should.",
+            ]
+
+        return [
+            "The city breathes around you, neon and rain and secrets.",
+        ]
+
+    def _ambient_line(self, room_name):
+        import random
+        candidates = self._ambient_candidates(room_name)
+        if not candidates:
+            return None
+        return random.choice(candidates)
+
+    def describe_room(self, room_name, entering=False):
         room = self.rooms.get(room_name)
         if not room:
             return "You are in a void."
         desc = room['description']
+        if entering:
+            line = self._ambient_line(room_name)
+            if line:
+                desc = f"{desc}\n\n{line}"
         exits = ', '.join(room['exits'].keys())
         return f"{desc}\nExits: {exits}"
 
@@ -465,4 +572,4 @@ class World:
         if not current or direction not in current['exits']:
             return "You can't go that way."
         player.current_room = current['exits'][direction]
-        return self.describe_room(player.current_room)
+        return self.describe_room(player.current_room, entering=True)
