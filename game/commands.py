@@ -48,14 +48,22 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
     cmd = (command or '').strip()
 
     # Mission instances: start only from back alleys
-    if cmd == 'mission':
+    if cmd.startswith('mission'):
+        parts = cmd.split()
+        tier = None
+        if len(parts) > 1:
+            tier = parts[1].strip().lower()
+        if tier in ('tiers', 'help', '?'):
+            return "Mission tiers: easy, medium, hard. Use: mission <tier>"
         room = getattr(player, 'current_room', '')
         if 'back_alley' not in str(room):
             return "You can only start a mission from a back alley."
         if hasattr(world, 'get_instance_for_player') and world.get_instance_for_player(player):
             return "You're already in a mission instance. Use 'leave' to abort."
         if hasattr(world, 'start_mission_instance'):
-            return world.start_mission_instance(player, entry_room=room)
+            if tier not in (None, '', 'easy', 'medium', 'hard'):
+                return "Unknown tier. Use: mission easy|medium|hard"
+            return world.start_mission_instance(player, entry_room=room, tier=tier)
         return "Missions are not supported in this world."
 
     if cmd == 'leave':
@@ -288,6 +296,13 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                         if mt['name'] == opp:
                             base_hp = mt.get('hp', base_hp)
                             break
+                # Scale boss HP for mission instances
+                inst = world.get_instance_for_player(player) if hasattr(world, 'get_instance_for_player') else None
+                if inst and opp == inst.get('boss'):
+                    try:
+                        base_hp = int(base_hp * float(inst.get('boss_hp_mult', 1.0) or 1.0))
+                    except Exception:
+                        pass
                 player.fight_hp = base_hp
                 # remove one mob instance from the room to engage
                 if hasattr(world, 'take_mob'):

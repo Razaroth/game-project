@@ -444,8 +444,35 @@ class World:
     def is_instance_room(self, room_name):
         return str(room_name or '').startswith('inst_')
 
-    def start_mission_instance(self, player, entry_room, length=None):
+    def start_mission_instance(self, player, entry_room, tier=None, length=None):
         import random
+        tier_key = (str(tier or '').strip().lower() or 'medium')
+        tiers = {
+            'easy': {
+                'rooms': (4, 5),
+                'mobs_per_room': (1, 1),
+                'boss_hp_mult': 0.85,
+                'reward_xp': (45, 80),
+                'reward_credits': (70, 120),
+            },
+            'medium': {
+                'rooms': (5, 7),
+                'mobs_per_room': (1, 2),
+                'boss_hp_mult': 1.0,
+                'reward_xp': (60, 110),
+                'reward_credits': (90, 160),
+            },
+            'hard': {
+                'rooms': (7, 9),
+                'mobs_per_room': (2, 3),
+                'boss_hp_mult': 1.25,
+                'reward_xp': (95, 150),
+                'reward_credits': (140, 230),
+            },
+        }
+        if tier_key not in tiers:
+            tier_key = 'medium'
+        tcfg = tiers[tier_key]
         key = self._player_key(player)
         # If a player already has an instance, keep it simple: wipe it and start fresh.
         self.end_mission_instance(player)
@@ -456,7 +483,7 @@ class World:
             ('ICE Break', 'You are pushing through hostile netrunners and security drones.'),
         ])
         title, blurb = theme
-        rooms_count = int(length) if length is not None else random.randint(4, 7)
+        rooms_count = int(length) if length is not None else random.randint(*tcfg['rooms'])
         instance_id = f"inst_{key}_{random.randint(1000, 9999)}"
 
         # Boss selection (names are in mob_types with high HP)
@@ -483,10 +510,10 @@ class World:
             if idx < len(created) - 1:
                 exits['north'] = created[idx + 1]
 
-        # Populate mobs (counts) in rooms: 1-2 mobs in each non-final, boss in final
+        # Populate mobs (counts) in rooms: tier-scaled mobs in each non-final, boss in final
         for rid in created[:-1]:
             self.mobs_by_room.setdefault(rid, {})
-            for _ in range(random.randint(1, 2)):
+            for _ in range(random.randint(*tcfg['mobs_per_room'])):
                 mob = random.choice(regular_pool)
                 self.mobs_by_room[rid][mob] = self.mobs_by_room[rid].get(mob, 0) + 1
         final_room = created[-1]
@@ -499,9 +526,11 @@ class World:
             'rooms': created,
             'boss': boss,
             'title': title,
+            'tier': tier_key,
             'completed': False,
-            'reward_xp': random.randint(60, 110),
-            'reward_credits': random.randint(90, 160),
+            'reward_xp': random.randint(*tcfg['reward_xp']),
+            'reward_credits': random.randint(*tcfg['reward_credits']),
+            'boss_hp_mult': float(tcfg.get('boss_hp_mult', 1.0) or 1.0),
         }
 
         # Move player into instance start room
@@ -789,5 +818,10 @@ class World:
         current = self.rooms.get(player.current_room)
         if not current or direction not in current['exits']:
             return "You can't go that way."
+        src_room = player.current_room
         player.current_room = current['exits'][direction]
+        if direction == 'out':
+            inst = self.get_instance_for_player(player)
+            if inst and src_room in set(inst.get('rooms', []) or []):
+                self.end_mission_instance(player)
         return self.describe_room(player.current_room, entering=True)
