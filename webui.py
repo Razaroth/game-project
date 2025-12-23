@@ -120,6 +120,60 @@ world = World()
 # Global rule: client-side regen allowed when not in battle (no per-user toggle)
 regen_enabled = True
 
+
+def _safe_int(value, default=0):
+    try:
+        return int(value)
+    except Exception:
+        return int(default)
+
+
+def _username_for_sid(sid):
+    if not sid:
+        return None
+    for u, p in list(web_players.items()):
+        if getattr(p, 'address', None) == sid:
+            return u
+    return None
+
+
+def _persist_player_state(username, player):
+    if not username or username not in accounts or player is None:
+        return
+    try:
+        acc = accounts.get(username)
+        if not isinstance(acc, dict):
+            acc = {'password': '', 'email': '', 'verified': False}
+            accounts[username] = acc
+
+        # If player disconnects inside a mission instance, save their entry alley instead.
+        room = getattr(player, 'current_room', world.start_room)
+        inst = world.get_instance_for_player(player) if hasattr(world, 'get_instance_for_player') else None
+        if hasattr(world, 'is_instance_room') and world.is_instance_room(room) and inst:
+            room = inst.get('entry_room') or world.start_room
+
+        acc['current_room'] = room
+        acc['inventory'] = list(getattr(player, 'inventory', acc.get('inventory', [])) or [])
+        acc['equipment'] = dict(getattr(player, 'equipment', acc.get('equipment', {})) or {})
+        acc['quests'] = dict(getattr(player, 'quests', acc.get('quests', {})) or {})
+
+        acc['credits'] = _safe_int(getattr(player, 'credits', acc.get('credits', 0)), acc.get('credits', 0))
+        acc['xp'] = _safe_int(getattr(player, 'xp', acc.get('xp', 0)), acc.get('xp', 0))
+        acc['level'] = _safe_int(getattr(player, 'level', acc.get('level', 1)), acc.get('level', 1))
+        acc['xp_max'] = _safe_int(getattr(player, 'xp_max', acc.get('xp_max', 100)), acc.get('xp_max', 100))
+
+        # Core stats
+        for attr in ('hp', 'energy', 'endurance', 'willpower'):
+            acc[attr] = _safe_int(getattr(player, attr, acc.get(attr, 100)), acc.get(attr, 100))
+
+        # Optional character name
+        if getattr(player, 'name', None):
+            acc['char_name'] = getattr(player, 'name')
+
+        save_accounts(accounts)
+    except Exception:
+        return
+
 def _is_in_fight(player):
     return bool(getattr(player, 'fight_opponent', None)) and getattr(player, 'fight_hp', None) not in (None, 0)
 
@@ -371,24 +425,11 @@ def admin_login():
 
 @app.route('/logout')
 def logout():
-    # Persist equipment and progression on logout if possible
+    # Persist player state on logout if possible
     username = session.get('username')
     if username and username in web_players and username in accounts:
         player = web_players.get(username)
-        try:
-            accounts[username]['equipment'] = dict(getattr(player, 'equipment', {}))
-            accounts[username]['xp'] = getattr(player, 'xp', accounts[username].get('xp', 0))
-            accounts[username]['level'] = getattr(player, 'level', accounts[username].get('level', 1))
-            accounts[username]['xp_max'] = getattr(player, 'xp_max', accounts[username].get('xp_max', 100))
-            accounts[username]['credits'] = int(getattr(player, 'credits', accounts[username].get('credits', 0)))
-            accounts[username]['inventory'] = list(getattr(player, 'inventory', accounts[username].get('inventory', [])))
-            accounts[username]['quests'] = dict(getattr(player, 'quests', accounts[username].get('quests', {})) or {})
-            accounts[username]['current_room'] = getattr(player, 'current_room', accounts[username].get('current_room', world.start_room))
-            for attr in ('hp', 'energy', 'endurance', 'willpower'):
-                accounts[username][attr] = int(getattr(player, attr, accounts[username].get(attr, 100)))
-            save_accounts(accounts)
-        except Exception:
-            pass
+        _persist_player_state(username, player)
     session.pop('username', None)
     return redirect(url_for('login'))
 
@@ -505,7 +546,8 @@ def handle_connect():
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    username = session.get('username')
+    sid = request.sid
+    username = session.get('username') or _username_for_sid(sid)
     player = web_players.get(username)
     # Notify players in the same room that this user disconnected
     if player is not None:
@@ -516,6 +558,13 @@ def handle_disconnect():
                 if sid_room:
                     socketio.emit('message', {'data': f"{player.name} disconnects."}, room=sid_room)
     if username in web_players:
+        # Persist state on disconnect (tab close, network loss, etc.)
+        _persist_player_state(username, player)
+        # Clean up any active mission instance rooms
+        try:
+            world.end_mission_instance(player)
+        except Exception:
+            pass
         del web_players[username]
 
 @socketio.on('command')
@@ -527,6 +576,7 @@ def handle_command_event(data):
         return
     command = data.get('command', '').strip()
     if command.lower() in ('quit', 'exit'):
+        _persist_player_state(username, player)
         emit('message', {'data': 'Goodbye!'})
         return
     # Built-in command: who (online players)
