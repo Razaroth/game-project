@@ -236,6 +236,37 @@
             box-shadow: 0 0 4px #00ff9944;
         }
 
+        /* Equipment slot flash on equip/unequip */
+        .eq-slot {
+            position: relative;
+            border-radius: 6px;
+            padding: 2px 4px;
+        }
+        .eq-slot.equip-effect {
+            animation: equipGlow 900ms ease-out 1;
+        }
+        .eq-slot.equip-effect::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 6px;
+            border: 1px solid #00ff99;
+            box-shadow: 0 0 14px 4px #00ff99cc;
+            opacity: 0;
+            animation: equipOverlay 900ms ease-out 1;
+            pointer-events: none;
+        }
+        @keyframes equipGlow {
+            0% { box-shadow: 0 0 0px #00ff99; }
+            35% { box-shadow: 0 0 22px 6px #00ff99cc, 0 0 10px 2px #00ff9944; }
+            100% { box-shadow: 0 0 0px #00ff99; }
+        }
+        @keyframes equipOverlay {
+            0% { opacity: 0; transform: scale(0.98); }
+            30% { opacity: 1; transform: scale(1.02); }
+            100% { opacity: 0; transform: scale(1.0); }
+        }
+
         /* More vibrant pulse animations per color */
         @keyframes pulseGreen {
             0%   { box-shadow: 0 0 8px rgba(0,255,153,0.5); filter: saturate(1); }
@@ -352,14 +383,14 @@
                         </svg>
                     </div>
                     <div style="flex:1;display:grid;grid-template-columns:repeat(2, minmax(120px, 1fr));gap:6px 12px;color:#caff70;min-width:0;overflow:auto;">
-                        <div><b>Head:</b> <span id="eq-head">-</span></div>
-                        <div><b>Body:</b> <span id="eq-body">-</span></div>
-                        <div><b>Hands:</b> <span id="eq-hands">-</span></div>
-                        <div><b>Legs:</b> <span id="eq-legs">-</span></div>
-                        <div><b>Feet:</b> <span id="eq-feet">-</span></div>
-                        <div><b>Weapon:</b> <span id="eq-weapon">-</span></div>
-                        <div><b>Offhand:</b> <span id="eq-offhand">-</span></div>
-                        <div><b>Accessory:</b> <span id="eq-accessory">-</span></div>
+                        <div class="eq-slot" data-eq-slot="head"><b>Head:</b> <span id="eq-head">-</span></div>
+                        <div class="eq-slot" data-eq-slot="body"><b>Body:</b> <span id="eq-body">-</span></div>
+                        <div class="eq-slot" data-eq-slot="hands"><b>Hands:</b> <span id="eq-hands">-</span></div>
+                        <div class="eq-slot" data-eq-slot="legs"><b>Legs:</b> <span id="eq-legs">-</span></div>
+                        <div class="eq-slot" data-eq-slot="feet"><b>Feet:</b> <span id="eq-feet">-</span></div>
+                        <div class="eq-slot" data-eq-slot="weapon"><b>Weapon:</b> <span id="eq-weapon">-</span></div>
+                        <div class="eq-slot" data-eq-slot="offhand"><b>Offhand:</b> <span id="eq-offhand">-</span></div>
+                        <div class="eq-slot" data-eq-slot="accessory"><b>Accessory:</b> <span id="eq-accessory">-</span></div>
                     </div>
                 </div>
             </div>
@@ -1125,6 +1156,19 @@
                     }
                 }, 700);
             }
+        });
+
+        // Animate the equipment slot that changed
+        socket.on('player_equip', function(evt) {
+            if (!evt) return;
+            const slot = (evt.slot || '').toString().toLowerCase();
+            if (!slot) return;
+            const row = document.querySelector(`[data-eq-slot="${slot}"]`) || (document.getElementById(`eq-${slot}`) && document.getElementById(`eq-${slot}`).parentElement);
+            if (!row) return;
+            row.classList.remove('equip-effect');
+            row.offsetWidth; // reflow
+            row.classList.add('equip-effect');
+            setTimeout(() => { row.classList.remove('equip-effect'); }, 950);
         });
         // Matrix rain effect
         const canvas = document.getElementById('matrix-canvas');

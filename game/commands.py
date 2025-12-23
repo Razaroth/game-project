@@ -386,6 +386,11 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             player.strength = getattr(player, 'strength', 10) + 2
         if slot == 'hands' and inv_match == 'Cyberdeck':
             player.tech = getattr(player, 'tech', 10) + 2
+
+        try:
+            player._last_equip = {'action': 'equip', 'slot': slot, 'item': inv_match}
+        except Exception:
+            pass
         return f"You equip {inv_match} on your {slot}."
     elif command.startswith("unequip "):
         slot = command[8:].strip().lower()
@@ -406,6 +411,11 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             player.tech = max(1, getattr(player, 'tech', 10) - 2)
         player.inventory.append(item)
         player.equipment[slot] = None
+
+        try:
+            player._last_equip = {'action': 'unequip', 'slot': slot, 'item': item}
+        except Exception:
+            pass
         return f"You unequip {item} from your {slot}."
     elif command.startswith("talk "):
         target = command[5:].strip().lower()

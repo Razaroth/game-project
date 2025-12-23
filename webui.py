@@ -680,6 +680,18 @@ def handle_command_event(data):
         # Global rule: enable regen for all players when not in battle
         'regen_enabled': (regen_enabled and not _is_in_fight(player))
     })
+
+    # Trigger equip animation on client (slot-specific)
+    equip_evt = getattr(player, '_last_equip', None)
+    if isinstance(equip_evt, dict) and equip_evt.get('slot'):
+        try:
+            emit('player_equip', equip_evt)
+        except Exception:
+            pass
+        try:
+            player._last_equip = None
+        except Exception:
+            pass
     # Persist progression (XP, Level) after each command
     if username in accounts:
         accounts[username]['xp'] = getattr(player, 'xp', accounts[username].get('xp', 0))
