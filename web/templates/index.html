@@ -172,6 +172,15 @@
             flex-direction: column;
             align-items: flex-start;
         }
+
+        /* Top UI panels: allow them to stretch to container width on desktop */
+        @media (min-width: 901px) {
+            .top-sidebar {
+                width: auto;
+                max-width: none;
+                margin-left: 0;
+            }
+        }
         .sidebar h3 {
             color: #00ff99;
             margin-top: 0;
@@ -303,7 +312,7 @@
         <!-- Top Section: Player Stats (Left) and Room Info (Right) -->
         <div style="display:flex;flex-direction:row;justify-content:stretch;align-items:flex-start;width:96vw;max-width:1400px;gap:16px;margin-top:96px;">
             <!-- Player Stats Sidebar (minimal) -->
-            <div class="sidebar" style="flex:1 1 0;min-width:340px;height:420px;background:rgba(20,30,20,0.96);border:2px solid #00ff99;border-radius:14px;box-shadow:0 0 16px #00ff99cc;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:12px;overflow-y:auto;overflow-x:hidden;">
+            <div class="sidebar top-sidebar" style="flex:1 1 0;min-width:340px;height:420px;background:rgba(20,30,20,0.96);border:2px solid #00ff99;border-radius:14px;box-shadow:0 0 16px #00ff99cc;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:12px;overflow-y:auto;overflow-x:hidden;">
                 <div style="width:90%;background:#101c10;border-radius:10px;padding:10px 12px;box-shadow:0 0 8px #00ff9944;margin:0;flex:0 0 120px;">
                     <h3 style="color:#00ff99;margin:0 0 8px 0;text-align:center;">Player</h3>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:10px;">
@@ -355,7 +364,7 @@
                 </div>
             </div>
             <!-- Room Info Sidebar (now with battle and inventory) -->
-            <div class="sidebar" style="flex:1 1 0;min-width:340px;height:420px;background:rgba(20,30,20,0.96);border:2px solid #caff70;border-radius:14px;box-shadow:0 0 16px #caff70cc;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:16px;overflow:auto;">
+            <div class="sidebar top-sidebar" style="flex:1 1 0;min-width:340px;height:420px;background:rgba(20,30,20,0.96);border:2px solid #caff70;border-radius:14px;box-shadow:0 0 16px #caff70cc;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:16px;overflow:auto;">
                 <div style="width:90%;background:#101c10;border-radius:10px;padding:16px;box-shadow:0 0 8px #caff7044;margin:16px auto;">
                     <h3 style="color:#caff70;margin:0 0 8px 0;text-align:center;">Room Info</h3>
                     <div id="room-info" style="text-align:center;min-height:32px;"></div>
