@@ -68,6 +68,41 @@ def _mission_state_for(player, mission_id):
 
 def handle_command(command, player, world, accounts=None, save_accounts=None):
     cmd = (command or '').strip()
+    cmd_l = cmd.lower()
+
+    if cmd_l in ('help', '?'):
+        return (
+            "Commands:\n\n"
+            "Movement\n"
+            "- look (l): Re-describe the current room.\n"
+            "- go <north|south|east|west>: Move between rooms.\n"
+            "- go out: Leave an instanced alley mission (when available).\n\n"
+            "Combat\n"
+            "- attack: Attack your current opponent (only in a fight).\n"
+            "- run: Try to escape a fight.\n"
+            "- search: Search after fights for loot (when available).\n\n"
+            "Items & Gear\n"
+            "- inventory: View your inventory (UI panel).\n"
+            "- take <item>: Pick up an item (context-sensitive).\n"
+            "- use <item>: Use a consumable (e.g., use stimpack).\n"
+            "- equip <item>: Equip an item from your inventory.\n"
+            "- unequip <slot>: Remove equipped item (weapon, hands, head, body, legs, feet, offhand, accessory).\n\n"
+            "NPCs & Missions\n"
+            "- talk <npc>: Talk and get mission offers/reminders.\n"
+            "- accept <mission_id>: Accept the NPC mission in your current room.\n"
+            "- turnin <mission_id>: Turn in an accepted mission when you have the required item.\n"
+            "- quests: List your active/completed missions.\n\n"
+            "Alley Runs (Instanced)\n"
+            "- mission [easy|medium|hard]: Start a back-alley run (only from back alleys).\n"
+            "- mission tiers: Show tiers + your recommended tier.\n"
+            "- leave: Abort an active alley run and return to the city.\n\n"
+            "Shops & Meta\n"
+            "- shop: View items for sale (when a vendor is present).\n"
+            "- buy <item>: Buy an item from a shop.\n"
+            "- credits: Show your credit balance.\n"
+            "- name <new_name>: Set your character name.\n"
+            "- quit / exit: End your session."
+        )
 
     # Mission instances: start only from back alleys
     if cmd.startswith('mission'):
