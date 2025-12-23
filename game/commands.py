@@ -334,21 +334,27 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             mid = mission.get('id')
             state = _mission_state_for(player, mid)
             req_item = mission.get('required_item')
+            dialog = mission.get('dialog') if isinstance(mission.get('dialog'), dict) else {}
             if state == 'completed':
-                return f"{npc_name} ({role}): 'We’re square. Come back later.'"
+                completed_line = dialog.get('completed') or "We're square. Come back later."
+                return f"{npc_name} ({role}): {completed_line}"
             if state == 'accepted':
                 has_item = any((i or '').lower() == str(req_item).lower() for i in getattr(player, 'inventory', []))
                 if has_item:
+                    ready_line = dialog.get('ready') or "You got it? Hand it over."
                     return (
-                        f"{npc_name} ({role}): 'You got it? Hand it over.'\n"
+                        f"{npc_name} ({role}): {ready_line}\n"
                         f"Turn-in: {mission.get('title')} — type `turnin {mid}`"
                     )
+                reminder_line = dialog.get('reminder') or f"{mission.get('title')}: {mission.get('description')}"
                 return (
-                    f"{npc_name} ({role}): '{mission.get('title')}: {mission.get('description')}'\n"
+                    f"{npc_name} ({role}): {reminder_line}\n"
                     f"Need: {req_item}."
                 )
+
+            offer_line = dialog.get('offer') or f"{mission.get('title')}: {mission.get('description')}"
             return (
-                f"{npc_name} ({role}): '{mission.get('title')}: {mission.get('description')}'\n"
+                f"{npc_name} ({role}): {offer_line}\n"
                 f"Need: {req_item}. Reward: {mission.get('reward_credits', 0)} cr, {mission.get('reward_xp', 0)} XP.\n"
                 f"Type `accept {mid}` to accept."
             )
@@ -421,7 +427,12 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             'title': mission.get('title', mid),
         }
         _persist_player_quests(player, accounts, save_accounts)
-        return f"Mission accepted: {mission.get('title')} (need: {mission.get('required_item')})."
+        dialog = mission.get('dialog') if isinstance(mission.get('dialog'), dict) else {}
+        accepted_line = dialog.get('accepted')
+        extra = f"Need: {mission.get('required_item')}."
+        if accepted_line:
+            return f"{npc.get('name')}: {accepted_line}\n{extra}"
+        return f"Mission accepted: {mission.get('title')} ({extra})"
 
     elif command.startswith('turnin '):
         token = command[7:].strip().lower()
@@ -464,10 +475,12 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             'title': mission.get('title', mid),
         }
         _persist_player_quests(player, accounts, save_accounts)
-        return (
-            f"Mission complete: {mission.get('title')}! "
-            f"(+{int(mission.get('reward_credits', 0) or 0)} cr, +{int(mission.get('reward_xp', 0) or 0)} XP)"
-        )
+        dialog = mission.get('dialog') if isinstance(mission.get('dialog'), dict) else {}
+        success_line = dialog.get('success')
+        rewards = f"(+{int(mission.get('reward_credits', 0) or 0)} cr, +{int(mission.get('reward_xp', 0) or 0)} XP)"
+        if success_line:
+            return f"{npc.get('name')}: {success_line}\nMission complete: {mission.get('title')}! {rewards}"
+        return f"Mission complete: {mission.get('title')}! {rewards}"
     elif command.startswith("buy "):
         item_raw = command[4:].strip()
         item = item_raw.lower()
