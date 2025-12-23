@@ -346,6 +346,13 @@
             50%  { stroke: #caff70; stroke-width: 5; filter: drop-shadow(0 0 6px #caff70); }
             100% { stroke: #00ff99; stroke-width: 3.5; filter: drop-shadow(0 0 2px #00ff99); }
         }
+
+        /* Player marker ring pulse on map */
+        @keyframes pulsePlayerRing {
+            0%   { stroke: #00ff99; stroke-opacity: 0.85; stroke-width: 2; }
+            50%  { stroke: #caff70; stroke-opacity: 1; stroke-width: 4; }
+            100% { stroke: #00ff99; stroke-opacity: 0.85; stroke-width: 2; }
+        }
     </style>
 </head>
 <body>
@@ -1027,6 +1034,78 @@
                     return pa.x - pb.x;
                 });
 
+                // Label collision avoidance
+                const usedLabelBoxes = [];
+                const approxCharW = 7.2; // in SVG units (good enough)
+                const labelPadX = 8;
+                const labelPadY = 5;
+                function overlapsAny(box) {
+                    for (const b of usedLabelBoxes) {
+                        if (
+                            box.x < b.x + b.w &&
+                            box.x + box.w > b.x &&
+                            box.y < b.y + b.h &&
+                            box.y + box.h > b.y
+                        ) return true;
+                    }
+                    return false;
+                }
+                function placeLabelFor(roomKey, cx, cy, text, isCurrent, baseY, fontSize) {
+                    const full = text || '';
+                    const label = full.length > 18 ? full.slice(0, 17) + '…' : full;
+                    const textW = Math.max(26, label.length * approxCharW);
+                    const boxW = textW + labelPadX * 2;
+                    const boxH = fontSize + labelPadY * 2;
+
+                    // Candidate offsets (try to avoid overlaps)
+                    const candidates = isCurrent
+                        ? [
+                            {dx: 0, dy: -6},
+                            {dx: 0, dy: -24},
+                            {dx: -40, dy: -12},
+                            {dx: 40, dy: -12},
+                          ]
+                        : [
+                            {dx: 0, dy: 0},
+                            {dx: -42, dy: 0},
+                            {dx: 42, dy: 0},
+                            {dx: 0, dy: 18},
+                            {dx: 0, dy: -18},
+                            {dx: -42, dy: 18},
+                            {dx: 42, dy: 18},
+                          ];
+
+                    let chosen = null;
+                    for (const c of candidates) {
+                        const x = cx + c.dx;
+                        const y = baseY + c.dy;
+                        // Our y is baseline; box starts above baseline.
+                        const box = { x: x - boxW / 2, y: y - boxH + 2, w: boxW, h: boxH };
+                        if (!overlapsAny(box) || isCurrent) {
+                            chosen = { x, y, box, label };
+                            if (!isCurrent) usedLabelBoxes.push(box);
+                            break;
+                        }
+                    }
+                    if (!chosen) return '';
+
+                    const fillColor = '#caff70';
+                    const boxStroke = '#00ff99';
+                    const boxFill = 'rgba(0,0,0,0.55)';
+                    const rx = 7;
+                    const rectX = chosen.box.x;
+                    const rectY = chosen.box.y;
+                    const rectW = chosen.box.w;
+                    const rectH = chosen.box.h;
+
+                    // Background pill + crisp text; pointer-events disabled so clicks pass through.
+                    return `
+                        <g style=\"pointer-events:none;\">
+                            <rect x=\"${rectX}\" y=\"${rectY}\" width=\"${rectW}\" height=\"${rectH}\" rx=\"${rx}\" fill=\"${boxFill}\" stroke=\"${boxStroke}\" stroke-opacity=\"0.65\" />
+                            <text x=\"${chosen.x}\" y=\"${chosen.y}\" text-anchor=\"middle\" font-size=\"${fontSize}\" font-family=\"Share Tech Mono, monospace\" fill=\"${fillColor}\" style=\"text-shadow: 0 0 6px rgba(0,255,153,0.35);\">${chosen.label}</text>
+                        </g>`;
+                }
+
                 for (const room of roomsSorted) {
                     const p = isoPos[room];
                     if (!p) continue;
@@ -1057,9 +1136,11 @@
 
                     // Player marker on current tile
                     if (isCurrent) {
-                        const xStyle = `stroke-linecap:round; animation:pulseXStroke 1200ms ease-in-out infinite;`;
-                        node += `<line x1=\"${cx}\" y1=\"${cy - 10}\" x2=\"${cx}\" y2=\"${cy + 10}\" style=\"${xStyle}\" />`;
-                        node += `<line x1=\"${cx - 10}\" y1=\"${cy}\" x2=\"${cx + 10}\" y2=\"${cy}\" style=\"${xStyle}\" />`;
+                        // Ring + pin marker: easier to spot while moving.
+                        const ringStyle = `stroke-linecap:round; animation:pulsePlayerRing 1200ms ease-in-out infinite;`;
+                        node += `<circle cx=\"${cx}\" cy=\"${cy}\" r=\"20\" fill=\"none\" stroke=\"#00ff99\" stroke-width=\"3\" style=\"${ringStyle}\" filter=\"url(#mudMapNeonGlow)\" />`;
+                        const pin = `${cx},${cy - 10} ${cx + 9},${cy} ${cx},${cy + 10} ${cx - 9},${cy}`;
+                        node += `<polygon points=\"${pin}\" fill=\"#caff70\" fill-opacity=\"0.9\" stroke=\"#00ff99\" stroke-width=\"1.5\" filter=\"url(#mudMapNeonGlow)\" />`;
                     }
 
                     // Labels: current always, nearby only when zoomed in
@@ -1067,13 +1148,9 @@
                     const showNearbyLabels = zoom >= 1.15;
                     const showLabel = isCurrent || (showNearbyLabels && d <= 1);
                     if (showLabel) {
-                        const full = prettyRoomName(room);
-                        const label = full.length > 18 ? full.slice(0, 17) + '…' : full;
-                        const fillColor = '#caff70';
                         const fontSize = isCurrent ? 13 : 12;
                         const labelY = isCurrent ? (cy - halfH - 10) : (cy + halfH + 20);
-                        node += `<text x=\"${cx}\" y=\"${labelY}\" text-anchor=\"middle\" font-size=\"${fontSize}\" font-family=\"Share Tech Mono, monospace\" stroke=\"#000\" stroke-width=\"3\" fill=\"none\" style=\"pointer-events:none;\">${label}</text>`;
-                        node += `<text x=\"${cx}\" y=\"${labelY}\" text-anchor=\"middle\" font-size=\"${fontSize}\" font-family=\"Share Tech Mono, monospace\" fill=\"${fillColor}\" style=\"pointer-events:none;\">${label}</text>`;
+                        node += placeLabelFor(room, cx, cy, prettyRoomName(room), isCurrent, labelY, fontSize);
                     }
 
                     content += `<g data-room=\"${room}\" style=\"cursor:pointer;\">${node}</g>`;
