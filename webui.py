@@ -1,3 +1,18 @@
+"""Web UI for Cyberdelia EX.
+
+If running with eventlet (Flask-SocketIO async mode), eventlet must be
+monkey-patched before importing other modules.
+"""
+
+_EVENTLET_AVAILABLE = False
+try:
+    import eventlet  # type: ignore
+
+    eventlet.monkey_patch()
+    _EVENTLET_AVAILABLE = True
+except Exception:
+    _EVENTLET_AVAILABLE = False
+
 from game.races_classes import RACES, CLASSES
 
 from flask import Flask, render_template, session, request, redirect, url_for
@@ -32,7 +47,7 @@ mail = Mail(app)
 socketio = SocketIO(
     app,
     manage_session=False,
-    async_mode='eventlet',
+    async_mode='eventlet' if _EVENTLET_AVAILABLE else 'threading',
     cors_allowed_origins='*'
 )
 
