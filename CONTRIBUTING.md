@@ -6,8 +6,8 @@ Thanks for your interest in contributing! This guide keeps contributions smooth 
 - Supported Python: 3.11–3.12
 - Clone and set up:
   ```pwsh
-  git clone https://github.com/Razaroth/game-project.git
-  cd game-project
+  git clone https://github.com/Razaroth/game-project.git "Cyberdelia EX"
+  cd "Cyberdelia EX"
   python -m venv .venv
   .venv\Scripts\Activate.ps1
   pip install -r requirements.txt

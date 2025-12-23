@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: game-project
+    name: cyberdelia-ex
     env: python
     plan: free
     region: oregon
@@ -8,7 +8,7 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -k eventlet -w 1 -b 0.0.0.0:$PORT webui:app
     disk:
-      name: game-project-disk
+      name: cyberdelia-ex-disk
       mountPath: .
       sizeGB: 1
     envVars:
