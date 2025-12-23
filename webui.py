@@ -46,7 +46,60 @@ def load_accounts():
     if not os.path.exists(ACCOUNTS_FILE):
         return {}
     with open(ACCOUNTS_FILE, 'r') as f:
-        return json.load(f)
+        data = json.load(f)
+    # Normalize legacy account formats:
+    # - If value is a string, it may be a password hash or plaintext password.
+    #   Convert into a dict with a `password` key (hashing plaintext as needed)
+    changed = False
+    for user, info in list(data.items()):
+        if isinstance(info, str):
+            pwd = info
+            # Detect common hashed formats (e.g., scrypt:, pbkdf2:)
+            if not any(pwd.startswith(prefix) for prefix in ('scrypt:', 'pbkdf2:', 'argon2:', 'sha256$')):
+                # Treat as plaintext — hash it
+                try:
+                    pwd = generate_password_hash(pwd)
+                except Exception:
+                    # Fallback: leave as-is
+                    pass
+            data[user] = {
+                'password': pwd,
+                'email': '',
+                'verified': False,
+                'race': None,
+                'char_class': None,
+                'credits': 100
+            }
+            changed = True
+        elif isinstance(info, dict):
+            # Ensure minimal keys exist for newer code paths
+            if 'password' in info:
+                # nothing to do for normal dicts, but ensure optional fields exist
+                if 'email' not in info:
+                    info['email'] = ''
+                    changed = True
+                if 'verified' not in info:
+                    info['verified'] = False
+                    changed = True
+                if 'race' not in info:
+                    info['race'] = None
+                    changed = True
+                if 'char_class' not in info:
+                    info['char_class'] = None
+                    changed = True
+                if 'credits' not in info:
+                    info['credits'] = 100
+                    changed = True
+            else:
+                # Unexpected dict shape — wrap conservatively
+                data[user] = {'password': '', 'email': '', 'verified': False, 'race': None, 'char_class': None, 'credits': 100}
+                changed = True
+    if changed:
+        try:
+            save_accounts(data)
+        except Exception:
+            pass
+    return data
 
 def save_accounts(accounts):
     with open(ACCOUNTS_FILE, 'w') as f:
@@ -253,7 +306,9 @@ def register():
                 'credits': 100
             }
             save_accounts(accounts)
-            # Send verification email
+            # Account is created regardless of email delivery.
+            success = 'Account created! You can now log in.'
+            # Send verification email (best-effort)
             try:
                 token = username  # Simple token for demo
                 verify_url = url_for('verify_email', username=token, _external=True)
@@ -261,8 +316,9 @@ def register():
                 msg.body = f'Click to verify your account: {verify_url}'
                 mail.send(msg)
                 success = 'Account created! Check your email to verify.'
-            except Exception as e:
-                error = f'Error sending email: {e}'
+            except Exception:
+                # Don't block registration in dev environments without SMTP.
+                pass
     return render_template('register.html', error=error, success=success)
 
 # Race/Class selection page

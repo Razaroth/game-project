@@ -2,6 +2,7 @@
 
 ## Quick Setup (Windows)
 - **Python:** Install Python 3.11 or 3.12.
+- **If `python` opens Microsoft Store:** Disable the Windows "App execution alias" for Python (Settings -> Apps -> Advanced app settings -> App execution aliases), then open a new terminal.
 - **Create venv:**
 
 ```powershell
@@ -12,7 +13,7 @@ python -m venv .venv
 - **Install deps:**
 
 ```powershell
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 - **Run web UI:**
@@ -75,11 +76,11 @@ This project is a cyberpunk-themed, text-based MMORPG with a modern web UI. It f
    ```
 4. Install dependencies:
    ```pwsh
-   pip install -r requirements.txt
+   python -m pip install -r requirements.txt
    ```
    - Optional for better Socket.IO performance (if you encounter long-polling):
    ```pwsh
-   pip install eventlet
+   python -m pip install eventlet
    ```
 5. Run the web UI server:
    ```pwsh
@@ -116,4 +117,3 @@ MIT
 
 ---
 This is a starting point. Expand and customize as you wish!
-\n+\nDeploy: trigger redeploy 2025-12-15
