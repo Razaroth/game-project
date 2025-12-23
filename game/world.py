@@ -136,6 +136,12 @@ class World:
             'hall': [
                 {'name': 'Rook', 'role': 'Fixer'}
             ],
+            'neon_plaza': [
+                {'name': 'Kite', 'role': 'Courier'}
+            ],
+            'synth_street_w': [
+                {'name': 'Doc Kira', 'role': 'Street Doc'}
+            ],
             'rust_and_circuit': [
                 {'name': 'Grease', 'role': 'Bartender'},
                 {'name': 'Mox', 'role': 'Bouncer'}
@@ -178,6 +184,15 @@ class World:
                 'reward_xp': 25,
                 'reward_credits': 40,
             },
+            # Hub mission that nudges players toward the corporate branch
+            'kite': {
+                'id': 'kite_corporate_access',
+                'title': 'Corporate Access',
+                'description': "I need a Visitor Pass. Get one from the corporate lobby and bring it back—fast.",
+                'required_item': 'Visitor Pass',
+                'reward_xp': 25,
+                'reward_credits': 50,
+            },
             # Bar/market missions using items that already exist in loot/shop tables
             'grease': {
                 'id': 'grease_spare_parts',
@@ -187,6 +202,14 @@ class World:
                 'reward_xp': 20,
                 'reward_credits': 35,
             },
+            'doc kira': {
+                'id': 'kira_stabilizer',
+                'title': 'Stabilizer',
+                'description': "Bring me an Adrenaline Shot. I’m running low and the street’s getting rough.",
+                'required_item': 'Adrenaline Shot',
+                'reward_xp': 20,
+                'reward_credits': 25,
+            },
             'patch': {
                 'id': 'patch_vr_chip',
                 'title': 'Glitched VR Chip',
@@ -194,6 +217,14 @@ class World:
                 'required_item': 'VR Chip',
                 'reward_xp': 20,
                 'reward_credits': 30,
+            },
+            'nyx': {
+                'id': 'nyx_signal_jammer',
+                'title': 'Signal Jammer',
+                'description': "Bring me an EMP Grenade. Someone’s sniffing my comms.",
+                'required_item': 'EMP Grenade',
+                'reward_xp': 30,
+                'reward_credits': 45,
             },
             'cipher': {
                 'id': 'cipher_red_eye',
