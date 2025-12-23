@@ -459,6 +459,10 @@ class World:
                 "Water drips somewhere in the dark, slow and patient.",
                 "The air tastes stale, like the room forgot how to breathe.",
             ],
+            'closet': [
+                "The space is tight enough to make your shoulders remember walls.",
+                "Dust and old fabric cling to the air, unmoved for years.",
+            ],
             'hall': [
                 "Neon leaks through a crack overhead, painting the grime electric.",
                 "A distant siren Dopplers past, then fades into rain.",
