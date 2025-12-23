@@ -308,6 +308,24 @@
             100% { box-shadow: 0 0 12px rgba(0,255,153,0.6); filter: brightness(1.05); }
         }
         .heal-effect { animation: healGlow 1200ms ease-in-out 1; }
+
+        /* Full-window heal pulse (subtle, neon-green) */
+        @keyframes windowHealPulse {
+            0%   { opacity: 0; }
+            20%  { opacity: 1; }
+            60%  { opacity: 0.65; }
+            100% { opacity: 0; }
+        }
+        #main-container.window-heal-effect::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 150;
+            background:
+                radial-gradient(circle at 50% 45%, rgba(0,255,153,0.24) 0%, rgba(0,255,153,0.12) 35%, rgba(0,0,0,0) 70%);
+            animation: windowHealPulse 850ms ease-out 1;
+        }
         /* Bright endurance glow (yellow) */
         @keyframes endGlow {
             0%   { box-shadow: 0 0 12px rgba(255,230,0,0.6); filter: brightness(1.05); }
@@ -1135,6 +1153,7 @@
         socket.on('player_heal', function() {
             const barH = document.getElementById('bar-health');
             const barE = document.getElementById('bar-endurance');
+            const mainContainer = document.getElementById('main-container');
             if (barH) {
                 barH.classList.add('heal-effect');
                 setTimeout(() => { barH.classList.remove('heal-effect'); }, 1000);
@@ -1142,6 +1161,12 @@
             if (barE) {
                 barE.classList.add('end-heal-effect');
                 setTimeout(() => { barE.classList.remove('end-heal-effect'); }, 1000);
+            }
+            if (mainContainer) {
+                mainContainer.classList.remove('window-heal-effect');
+                mainContainer.offsetWidth; // reflow
+                mainContainer.classList.add('window-heal-effect');
+                setTimeout(() => { mainContainer.classList.remove('window-heal-effect'); }, 900);
             }
         });
         // Willpower-specific heal glow (for future consumables)
