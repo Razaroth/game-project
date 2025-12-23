@@ -45,8 +45,33 @@ def _mission_state_for(player, mission_id):
     return None
 
 def handle_command(command, player, world, accounts=None, save_accounts=None):
+    cmd = (command or '').strip()
+
+    # Mission instances: start only from back alleys
+    if cmd == 'mission':
+        room = getattr(player, 'current_room', '')
+        if 'back_alley' not in str(room):
+            return "You can only start a mission from a back alley."
+        if hasattr(world, 'get_instance_for_player') and world.get_instance_for_player(player):
+            return "You're already in a mission instance. Use 'leave' to abort."
+        if hasattr(world, 'start_mission_instance'):
+            return world.start_mission_instance(player, entry_room=room)
+        return "Missions are not supported in this world."
+
+    if cmd == 'leave':
+        inst = world.get_instance_for_player(player) if hasattr(world, 'get_instance_for_player') else None
+        if not inst:
+            return "You're not in a mission instance."
+        entry = inst.get('entry_room')
+        if hasattr(world, 'end_mission_instance'):
+            world.end_mission_instance(player)
+        if entry and hasattr(world, 'rooms') and entry in world.rooms:
+            player.current_room = entry
+            return world.describe_room(entry, entering=True)
+        return "You leave the mission and return to the city."
+
     # Search command for loot after fights
-    if command == 'search':
+    if cmd == 'search':
         if hasattr(player, 'last_defeated') and player.last_defeated:
             loot_table = [
                 'Stimpack', 'Neon Blade', 'Cyberdeck Fragment', '50 credits', 'Red Eye Vial', 'Encrypted Chip', 'Energy Drink',
@@ -62,7 +87,7 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             return msg
         else:
             return "There's nothing to search here."
-    if command in ("look", "l"):
+    if cmd in ("look", "l"):
         # Random encounter in hallway
         if player.current_room == "hall":
             # 20% chance for angry drug addict fight
@@ -93,7 +118,7 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
         return world.describe_room(player.current_room)
     # Fight logic for active battles (drug addict, roaming gangs, etc.)
     if hasattr(player, 'in_fight') and player.in_fight:
-        if command == 'attack':
+        if cmd == 'attack':
             # Damage now uses player's attack stat (strength + weapon bonus) with crits for Neon Blade
             base_roll = random.randint(6, 12)
             attack_stat = player.get_attack() if hasattr(player, 'get_attack') else getattr(player, 'strength', 10)
@@ -115,6 +140,22 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                 player.fight_opponent = None
                 player.fight_hp = None
                 player.last_defeated = defeated
+
+                # Mission instance completion: if the defeated enemy is the instance boss
+                inst = world.get_instance_for_player(player) if hasattr(world, 'get_instance_for_player') else None
+                if inst and defeated == inst.get('boss'):
+                    world.complete_mission_instance(player) if hasattr(world, 'complete_mission_instance') else None
+                    bonus_xp = int(inst.get('reward_xp', 0) or 0)
+                    bonus_cr = int(inst.get('reward_credits', 0) or 0)
+                    player.xp = getattr(player, 'xp', 0) + bonus_xp
+                    player.credits = getattr(player, 'credits', 0) + bonus_cr
+                    title = inst.get('title', 'Mission')
+                    return (
+                        f"You strike with Atk {attack_stat} and deal {dmg} damage{' (CRIT!)' if crit else ''}! The {defeated} goes down. You win the fight!\n"
+                        f"MISSION COMPLETE: {title}! (+{bonus_cr} cr, +{bonus_xp} XP)\n"
+                        "Type 'go out' to leave, or 'leave' to abort and clean up."
+                    )
+
                 xp_gain = random.randint(15, 30)
                 player.xp = getattr(player, 'xp', 0) + xp_gain
                 # Level up if needed
@@ -145,7 +186,7 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                     player.in_fight = False
                     return msg + "\nYou were knocked out! You wake up later, dazed, with some health restored."
                 return msg
-        elif command == 'run':
+        elif cmd == 'run':
             if random.random() < 0.5:
                 player.in_fight = False
                 player.fight_opponent = None
@@ -227,14 +268,15 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                 return f"A Gang Member appears in {player.current_room}."
             else:
                 return "Spawning mobs is not supported in this world."
-    elif command.startswith("go "):
+    elif cmd.startswith("go "):
         direction = command[3:].strip()
         result = world.move_player(player, direction)
         # After moving, check for roaming gangs in the new room
         mobs_here = world.get_mobs_in_room(player.current_room) if hasattr(world, 'get_mobs_in_room') else []
         if mobs_here:
-            # 50% chance to get jumped if a mob is present
-            if random.random() < 0.5:
+            # 50% chance to get jumped if a mob is present (always in mission instances)
+            force = hasattr(world, 'is_instance_room') and world.is_instance_room(player.current_room)
+            if force or (random.random() < 0.5):
                 player.in_fight = True
                 # Pick one mob present for the encounter
                 opp = random.choice(mobs_here)

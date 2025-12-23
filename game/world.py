@@ -130,6 +130,10 @@ class World:
                 'exits': {'north': 'underground_metro'}
             }
         }
+
+        # Expand the city map beyond the handcrafted core.
+        # This keeps the file maintainable while increasing world scale.
+        self._expand_city()
         self.start_room = 'start'
         # Stationary NPCs per room (name, role)
         self.npcs_by_room = {
@@ -319,9 +323,219 @@ class World:
             {'name': 'Enforcer', 'hp': 55, 'weight': 1},
             {'name': 'Aug Bruiser', 'hp': 60, 'weight': 1},
             {'name': 'Drone Swarm', 'hp': 20, 'weight': 2},
-            {'name': 'Net Runner', 'hp': 30, 'weight': 2}
+            {'name': 'Net Runner', 'hp': 30, 'weight': 2},
+            # Boss-only types (weight 0 so they never seed as roaming gangs)
+            {'name': 'Alley Kingpin', 'hp': 140, 'weight': 0},
+            {'name': 'ICE Warden', 'hp': 130, 'weight': 0},
+            {'name': 'Chrome Butcher', 'hp': 150, 'weight': 0},
         ]
+
+        # Per-player mission instances (temporary rooms + metadata)
+        # Keyed by a stable player key (username if available, else address).
+        self.instances = {}
         self._seed_roaming_gangs()
+
+    def _expand_city(self):
+        def add_room(room_id, description, exits=None):
+            if room_id in self.rooms:
+                return
+            self.rooms[room_id] = {
+                'description': description,
+                'exits': dict(exits or {})
+            }
+
+        def link(a, direction, b, back_direction=None):
+            if a not in self.rooms or b not in self.rooms:
+                return
+            self.rooms[a].setdefault('exits', {})
+            self.rooms[b].setdefault('exits', {})
+            self.rooms[a]['exits'][direction] = b
+            if back_direction:
+                self.rooms[b]['exits'][back_direction] = a
+
+        # 1) Chrome Avenue extension (eastward corporate district)
+        prev = 'corporate_lobby'
+        for i in range(1, 13):
+            rid = f'corporate_district_{i}'
+            add_room(
+                rid,
+                f'Corporate District {i}: glass walkways, security plaques, and quiet money moving in silence.',
+                {}
+            )
+            link(prev, 'east', rid, 'west')
+            # Branch: office side-hall every 3 blocks
+            if i % 3 == 0:
+                side = f'office_hall_{i//3}'
+                add_room(side, 'Office Hall: frosted doors, muted comms, and the faint smell of sanitizer.', {})
+                link(rid, 'north', side, 'south')
+                lab = f'compliance_lab_{i//3}'
+                add_room(lab, 'Compliance Lab: sealed consoles, locked drawers, and humming audit terminals.', {})
+                link(side, 'east', lab, 'west')
+            prev = rid
+
+        # 2) Synth Street extension (east/west sprawl + alleys)
+        prev = 'synth_street_e'
+        for i in range(1, 11):
+            rid = f'synth_street_e_{i}'
+            add_room(rid, f'Synth Street East {i}: rain, cables, and bass bleeding through thin walls.', {})
+            link(prev, 'east', rid, 'west')
+            # Add a back alley spur every other block
+            if i % 2 == 0:
+                alley = f'back_alley_e_{i}'
+                add_room(alley, 'Back Alley: wet concrete, hot steam vents, and reactive graffiti that watches.', {})
+                link(rid, 'south', alley, 'north')
+            prev = rid
+
+        prev = 'synth_street_w'
+        for i in range(1, 11):
+            rid = f'synth_street_w_{i}'
+            add_room(rid, f'Synth Street West {i}: streetlights stutter; vendors trade in whispers.', {})
+            link(prev, 'west', rid, 'east')
+            if i % 2 == 1:
+                alley = f'back_alley_w_{i}'
+                add_room(alley, 'Back Alley: narrow lanes, humming wires, and puddles of neon.', {})
+                link(rid, 'south', alley, 'north')
+            prev = rid
+
+        # 3) Market sprawl (from night market)
+        prev = 'night_market'
+        for i in range(1, 16):
+            rid = f'market_row_{i}'
+            add_room(rid, f'Market Row {i}: tarps flap, drones hover, and contraband changes hands fast.', {})
+            link(prev, 'east', rid, 'west')
+            if i % 4 == 0:
+                den = f'junk_den_{i//4}'
+                add_room(den, 'Junk Den: stacked crates of scrapware and a merchant who never gives a name.', {})
+                link(rid, 'south', den, 'north')
+            prev = rid
+        # Connect far market edge back toward the bazaar for loops
+        link(prev, 'north', 'black_market_bazaar', 'south')
+
+        # 4) Underground expansion (metro tunnels)
+        prev = 'underground_metro'
+        for i in range(1, 12):
+            rid = f'metro_tunnel_{i}'
+            add_room(rid, f'Metro Tunnel {i}: old tiles, dripping pipes, and distant machinery.', {})
+            link(prev, 'south', rid, 'north')
+            if i % 3 == 0:
+                bay = f'maintenance_bay_{i//3}'
+                add_room(bay, 'Maintenance Bay: tool lockers, coolant stains, and a faint electric buzz.', {})
+                link(rid, 'west', bay, 'east')
+            prev = rid
+        # Connect deep tunnels to scrapyard for another loop
+        link(prev, 'up', 'scrapyard', 'down')
+
+        # 5) Industrial ring (from scrapyard)
+        prev = 'scrapyard'
+        for i in range(1, 21):
+            rid = f'industrial_ring_{i}'
+            add_room(rid, f'Industrial Ring {i}: factories cough heat; conveyor belts never stop.', {})
+            link(prev, 'east', rid, 'west')
+            if i % 5 == 0:
+                yard = f'loading_yard_{i//5}'
+                add_room(yard, 'Loading Yard: shipping containers stacked like city blocks and buzzing forklifts.', {})
+                link(rid, 'south', yard, 'north')
+            prev = rid
+        link(prev, 'north', 'neon_plaza', 'south')
+
+    def _player_key(self, player):
+        return str(getattr(player, 'username', None) or getattr(player, 'address', None) or id(player))
+
+    def is_instance_room(self, room_name):
+        return str(room_name or '').startswith('inst_')
+
+    def start_mission_instance(self, player, entry_room, length=None):
+        import random
+        key = self._player_key(player)
+        # If a player already has an instance, keep it simple: wipe it and start fresh.
+        self.end_mission_instance(player)
+
+        theme = random.choice([
+            ('Data Heist', 'You are running a data theft through hostile alleys.'),
+            ('Wetwork', 'You are clearing a gang route before it spills into the streets.'),
+            ('ICE Break', 'You are pushing through hostile netrunners and security drones.'),
+        ])
+        title, blurb = theme
+        rooms_count = int(length) if length is not None else random.randint(4, 7)
+        instance_id = f"inst_{key}_{random.randint(1000, 9999)}"
+
+        # Boss selection (names are in mob_types with high HP)
+        boss = random.choice(['Alley Kingpin', 'ICE Warden', 'Chrome Butcher'])
+        # Pick regular mobs from non-boss mob_types
+        regular_pool = [m['name'] for m in self.mob_types if m.get('weight', 0) > 0]
+
+        created = []
+        for i in range(1, rooms_count + 1):
+            rid = f"{instance_id}_r{i}"
+            desc = (
+                f"Mission: {title}. {blurb}\n"
+                f"Route {i}/{rooms_count}: the alley narrows, the noise fades, and the job gets louder."
+            )
+            self.rooms[rid] = {'description': desc, 'exits': {}}
+            created.append(rid)
+
+        # Wire exits; add 'out' to all rooms so player can leave
+        for idx, rid in enumerate(created):
+            exits = self.rooms[rid].setdefault('exits', {})
+            exits['out'] = entry_room
+            if idx > 0:
+                exits['south'] = created[idx - 1]
+            if idx < len(created) - 1:
+                exits['north'] = created[idx + 1]
+
+        # Populate mobs (counts) in rooms: 1-2 mobs in each non-final, boss in final
+        for rid in created[:-1]:
+            self.mobs_by_room.setdefault(rid, {})
+            for _ in range(random.randint(1, 2)):
+                mob = random.choice(regular_pool)
+                self.mobs_by_room[rid][mob] = self.mobs_by_room[rid].get(mob, 0) + 1
+        final_room = created[-1]
+        self.mobs_by_room.setdefault(final_room, {})
+        self.mobs_by_room[final_room][boss] = self.mobs_by_room[final_room].get(boss, 0) + 1
+
+        self.instances[key] = {
+            'id': instance_id,
+            'entry_room': entry_room,
+            'rooms': created,
+            'boss': boss,
+            'title': title,
+            'completed': False,
+            'reward_xp': random.randint(60, 110),
+            'reward_credits': random.randint(90, 160),
+        }
+
+        # Move player into instance start room
+        try:
+            player.current_room = created[0]
+        except Exception:
+            pass
+        return self.describe_room(created[0], entering=True)
+
+    def get_instance_for_player(self, player):
+        return self.instances.get(self._player_key(player))
+
+    def complete_mission_instance(self, player):
+        inst = self.get_instance_for_player(player)
+        if not inst:
+            return None
+        inst['completed'] = True
+        return inst
+
+    def end_mission_instance(self, player):
+        key = self._player_key(player)
+        inst = self.instances.pop(key, None)
+        if not inst:
+            return
+        # Remove rooms and any mobs seeded into them.
+        for rid in inst.get('rooms', []):
+            try:
+                self.rooms.pop(rid, None)
+            except Exception:
+                pass
+            try:
+                self.mobs_by_room.pop(rid, None)
+            except Exception:
+                pass
 
     def get_npcs(self, room_name):
         return list(self.npcs_by_room.get(room_name, []))
