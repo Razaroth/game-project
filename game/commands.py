@@ -1,6 +1,28 @@
 import random
 
 
+def _recommended_mission_tier(player):
+    try:
+        level = int(getattr(player, 'level', 1) or 1)
+    except Exception:
+        level = 1
+    try:
+        hp = int(getattr(player, 'hp', 100) or 0)
+    except Exception:
+        hp = 100
+    try:
+        atk = int(player.get_attack()) if hasattr(player, 'get_attack') else int(getattr(player, 'strength', 10) or 10)
+    except Exception:
+        atk = 10
+
+    # Minimal, deterministic heuristic (no gating): prefer easy early, hard late.
+    if level <= 2 or atk <= 12 or hp <= 60:
+        return 'easy'
+    if level >= 7 and atk >= 16 and hp >= 85:
+        return 'hard'
+    return 'medium'
+
+
 def _player_quests(player):
     quests = getattr(player, 'quests', None)
     if not isinstance(quests, dict):
@@ -54,7 +76,12 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
         if len(parts) > 1:
             tier = parts[1].strip().lower()
         if tier in ('tiers', 'help', '?'):
-            return "Mission tiers: easy, medium, hard. Use: mission <tier>"
+            rec = _recommended_mission_tier(player)
+            try:
+                lvl = int(getattr(player, 'level', 1) or 1)
+            except Exception:
+                lvl = 1
+            return f"Mission tiers: easy, medium, hard. Use: mission <tier>\nRecommended for you: {rec} (level {lvl})"
         room = getattr(player, 'current_room', '')
         if 'back_alley' not in str(room):
             return "You can only start a mission from a back alley."
@@ -63,7 +90,16 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
         if hasattr(world, 'start_mission_instance'):
             if tier not in (None, '', 'easy', 'medium', 'hard'):
                 return "Unknown tier. Use: mission easy|medium|hard"
-            return world.start_mission_instance(player, entry_room=room, tier=tier)
+            out = world.start_mission_instance(player, entry_room=room, tier=tier)
+            if tier in (None, ''):
+                rec = _recommended_mission_tier(player)
+                try:
+                    lvl = int(getattr(player, 'level', 1) or 1)
+                except Exception:
+                    lvl = 1
+                tip = f"Tip: recommended tier for you is {rec} (level {lvl}). Start with `mission {rec}`.\n\n"
+                return tip + out
+            return out
         return "Missions are not supported in this world."
 
     if cmd == 'leave':
