@@ -185,6 +185,7 @@ class World:
                 'title': 'Chip Run',
                 'description': "Bring me an Encrypted Chip. I'll pay and bump your rep.",
                 'required_item': 'Encrypted Chip',
+                'hint': "Pick fights in the streets/alleys, then use `search` on the body for loot.",
                 'reward_xp': 25,
                 'reward_credits': 40,
                 'dialog': {
@@ -202,6 +203,7 @@ class World:
                 'title': 'Corporate Access',
                 'description': "I need a Visitor Pass. Get one from the corporate lobby and bring it back fast.",
                 'required_item': 'Visitor Pass',
+                'hint': "Head toward the Corporate Lobby and look around; if you spot it, try `take Visitor Pass`.",
                 'reward_xp': 25,
                 'reward_credits': 50,
                 'dialog': {
@@ -219,6 +221,7 @@ class World:
                 'title': 'Spare Parts',
                 'description': "Find a Cyberdeck Fragment. I'll trade credits for it.",
                 'required_item': 'Cyberdeck Fragment',
+                'hint': "Cyberdeck scraps turn up on enemies. Win fights and `search` afterward.",
                 'reward_xp': 20,
                 'reward_credits': 35,
                 'dialog': {
@@ -235,6 +238,7 @@ class World:
                 'title': 'Stabilizer',
                 'description': "Bring me an Adrenaline Shot. I'm running low and the street's getting rough.",
                 'required_item': 'Adrenaline Shot',
+                'hint': "Check bars/markets for supplies, or win fights and `search` for medical loot.",
                 'reward_xp': 20,
                 'reward_credits': 25,
                 'dialog': {
@@ -251,6 +255,7 @@ class World:
                 'title': 'Glitched VR Chip',
                 'description': "Bring me a VR Chip. I want to inspect its firmware.",
                 'required_item': 'VR Chip',
+                'hint': "VR tech is usually scavenged. Fight in the city and `search` for one.",
                 'reward_xp': 20,
                 'reward_credits': 30,
                 'dialog': {
@@ -267,6 +272,7 @@ class World:
                 'title': 'Signal Jammer',
                 'description': "Bring me an EMP Grenade. Someone's sniffing my comms.",
                 'required_item': 'EMP Grenade',
+                'hint': "EMP gear is rare. Roaming gangs sometimes carry it—fight and `search`.",
                 'reward_xp': 30,
                 'reward_credits': 45,
                 'dialog': {
@@ -283,6 +289,7 @@ class World:
                 'title': 'Red Eye Sample',
                 'description': "Score me a Vial of Red Eye. Quietly.",
                 'required_item': 'Vial of Red Eye',
+                'hint': "Hang around the hall and `look` for shady offers; when it appears, use `take`.",
                 'reward_xp': 30,
                 'reward_credits': 60,
                 'dialog': {
@@ -299,6 +306,7 @@ class World:
                 'title': 'Cold Energy',
                 'description': "Bring me an Energy Drink from the street stalls.",
                 'required_item': 'Energy Drink',
+                'hint': "Find a vendor/bartender and use `shop`, then `buy Energy Drink`.",
                 'reward_xp': 10,
                 'reward_credits': 15,
                 'dialog': {

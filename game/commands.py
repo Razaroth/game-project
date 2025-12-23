@@ -91,6 +91,11 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             if tier not in (None, '', 'easy', 'medium', 'hard'):
                 return "Unknown tier. Use: mission easy|medium|hard"
             out = world.start_mission_instance(player, entry_room=room, tier=tier)
+            try:
+                shown_tier = tier if tier not in (None, '') else 'recommended'
+                player._last_world_event = {'text': f"Started a {shown_tier} alley run."}
+            except Exception:
+                pass
             if tier in (None, ''):
                 rec = _recommended_mission_tier(player)
                 try:
@@ -111,7 +116,15 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             world.end_mission_instance(player)
         if entry and hasattr(world, 'rooms') and entry in world.rooms:
             player.current_room = entry
+            try:
+                player._last_world_event = {'text': "Walked away from an alley run."}
+            except Exception:
+                pass
             return world.describe_room(entry, entering=True)
+        try:
+            player._last_world_event = {'text': "Walked away from an alley run."}
+        except Exception:
+            pass
         return "You leave the mission and return to the city."
 
     # Search command for loot after fights
@@ -194,6 +207,14 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                     player.xp = getattr(player, 'xp', 0) + bonus_xp
                     player.credits = getattr(player, 'credits', 0) + bonus_cr
                     title = inst.get('title', 'Mission')
+                    try:
+                        tier_txt = inst.get('tier') or ''
+                        if tier_txt:
+                            player._last_world_event = {'text': f"Cleared a {tier_txt} alley boss."}
+                        else:
+                            player._last_world_event = {'text': "Cleared an alley boss."}
+                    except Exception:
+                        pass
                     return (
                         f"You strike with Atk {attack_stat} and deal {dmg} damage{' (CRIT!)' if crit else ''}! The {defeated} goes down. You win the fight!\n"
                         f"MISSION COMPLETE: {title}! (+{bonus_cr} cr, +{bonus_xp} XP)\n"
@@ -437,6 +458,8 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             mid = mission.get('id')
             state = _mission_state_for(player, mid)
             req_item = mission.get('required_item')
+            hint = mission.get('hint')
+            hint_line = f"\nHint: {hint}" if hint else ""
             dialog = mission.get('dialog') if isinstance(mission.get('dialog'), dict) else {}
             if state == 'completed':
                 completed_line = dialog.get('completed') or "We're square. Come back later."
@@ -451,13 +474,13 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                     )
                 reminder_line = dialog.get('reminder') or f"{mission.get('title')}: {mission.get('description')}"
                 return (
-                    f"{npc_name} ({role}): {reminder_line}\n"
+                    f"{npc_name} ({role}): {reminder_line}{hint_line}\n"
                     f"Need: {req_item}."
                 )
 
             offer_line = dialog.get('offer') or f"{mission.get('title')}: {mission.get('description')}"
             return (
-                f"{npc_name} ({role}): {offer_line}\n"
+                f"{npc_name} ({role}): {offer_line}{hint_line}\n"
                 f"Need: {req_item}. Reward: {mission.get('reward_credits', 0)} cr, {mission.get('reward_xp', 0)} XP.\n"
                 f"Type `accept {mid}` to accept."
             )
@@ -533,9 +556,11 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
         dialog = mission.get('dialog') if isinstance(mission.get('dialog'), dict) else {}
         accepted_line = dialog.get('accepted')
         extra = f"Need: {mission.get('required_item')}."
+        hint = mission.get('hint')
+        hint_line = f"\nHint: {hint}" if hint else ""
         if accepted_line:
-            return f"{npc.get('name')}: {accepted_line}\n{extra}"
-        return f"Mission accepted: {mission.get('title')} ({extra})"
+            return f"{npc.get('name')}: {accepted_line}\n{extra}{hint_line}"
+        return f"Mission accepted: {mission.get('title')} ({extra}){hint_line}"
 
     elif command.startswith('turnin '):
         token = command[7:].strip().lower()
@@ -581,6 +606,11 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
         dialog = mission.get('dialog') if isinstance(mission.get('dialog'), dict) else {}
         success_line = dialog.get('success')
         rewards = f"(+{int(mission.get('reward_credits', 0) or 0)} cr, +{int(mission.get('reward_xp', 0) or 0)} XP)"
+        try:
+            title = mission.get('title') or str(mid)
+            player._last_world_event = {'text': f"Closed a contract: {title}."}
+        except Exception:
+            pass
         if success_line:
             return f"{npc.get('name')}: {success_line}\nMission complete: {mission.get('title')}! {rewards}"
         return f"Mission complete: {mission.get('title')}! {rewards}"

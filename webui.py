@@ -9,6 +9,7 @@ from game.world import World
 from game.commands import handle_command
 import json
 import os
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -146,6 +147,9 @@ def _persist_player_state(username, player):
             acc = {'password': '', 'email': '', 'verified': False}
             accounts[username] = acc
 
+        # Update last logout timestamp for "world continues" recap
+        acc['last_logout'] = datetime.now(timezone.utc).isoformat()
+
         # If player disconnects inside a mission instance, save their entry alley instead.
         room = getattr(player, 'current_room', world.start_room)
         inst = world.get_instance_for_player(player) if hasattr(world, 'get_instance_for_player') else None
@@ -173,6 +177,119 @@ def _persist_player_state(username, player):
         save_accounts(accounts)
     except Exception:
         return
+
+
+def _parse_iso_dt(value):
+    if not value or not isinstance(value, str):
+        return None
+    try:
+        # Accept both naive and aware; treat naive as UTC.
+        dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return None
+
+
+def _append_timeline_event(username, text):
+    if not username or username not in accounts:
+        return
+    if not text:
+        return
+    try:
+        acc = accounts.get(username)
+        if not isinstance(acc, dict):
+            return
+        tl = acc.get('timeline')
+        if not isinstance(tl, list):
+            tl = []
+        tl.append({'ts': datetime.now(timezone.utc).isoformat(), 'text': str(text)})
+        # Keep it bounded
+        acc['timeline'] = tl[-25:]
+        save_accounts(accounts)
+    except Exception:
+        return
+
+
+def _build_login_recap(username, acc, world_obj):
+    # Produce a short, punchy recap. Keep ASCII-friendly.
+    try:
+        # Prefer last_logout for "time away"; fall back to last_seen for older accounts.
+        last_seen = None
+        if isinstance(acc, dict):
+            last_seen = _parse_iso_dt(acc.get('last_logout')) or _parse_iso_dt(acc.get('last_seen'))
+        now = datetime.now(timezone.utc)
+        hours_away = None
+        if last_seen:
+            delta = now - last_seen
+            hours_away = max(0.0, delta.total_seconds() / 3600.0)
+
+        # Generic city "continuity" beats
+        beats = []
+        if hours_away is None:
+            beats.append("While you were gone, Cyberdelia kept moving - deals, drones, and distant sirens.")
+        elif hours_away < 0.25:
+            beats.append("You step back in like you never left. The neon never stopped humming.")
+        elif hours_away < 6:
+            beats.append("A few hours passed. Patrol routes shifted and the market changed hands twice.")
+        elif hours_away < 24:
+            beats.append("The city rolled on through the night. Gangs drifted, vendors rotated, and rumors spread.")
+        else:
+            beats.append("Days blurred together. Old faces vanished, new ones took corners, and the city rewrote itself.")
+
+        # Use world state lightly (roaming mobs count) to flavor the recap
+        mob_rooms = 0
+        try:
+            mob_rooms = sum(1 for _, c in (getattr(world_obj, 'mobs_by_room', {}) or {}).items() if c)
+        except Exception:
+            mob_rooms = 0
+        if mob_rooms:
+            beats.append(f"Street chatter says trouble is active in about {mob_rooms} zones.")
+        else:
+            beats.append("For once, the streets feel quiet - which usually means something is planning.")
+
+        # Player impact: recent timeline since last_seen
+        impact_lines = []
+        timeline = acc.get('timeline') if isinstance(acc, dict) else None
+        if isinstance(timeline, list) and timeline:
+            recent = []
+            for e in timeline[::-1]:
+                if not isinstance(e, dict):
+                    continue
+                ts = _parse_iso_dt(e.get('ts'))
+                if last_seen and ts and ts <= last_seen:
+                    break
+                txt = e.get('text')
+                if txt:
+                    recent.append(str(txt))
+                if len(recent) >= 3:
+                    break
+            if recent:
+                impact_lines.append("Your name came up in the noise:")
+                for r in reversed(recent):
+                    impact_lines.append(f"- {r}")
+
+        # Quests summary (how you affected the world)
+        quests = acc.get('quests') if isinstance(acc, dict) else None
+        if isinstance(quests, dict):
+            completed = sum(1 for _, q in quests.items() if isinstance(q, dict) and q.get('status') == 'completed')
+            accepted = sum(1 for _, q in quests.items() if isinstance(q, dict) and q.get('status') == 'accepted')
+            if completed:
+                beats.append(f"Your past jobs still echo: {completed} contract(s) closed, shifting attention and heat.")
+            if accepted:
+                beats.append(f"You still have {accepted} open lead(s) waiting on your next move.")
+
+        # Keep it brief: cap to 3 beat lines.
+        header = "CITY RECAP"
+        beats = beats[:3]
+        lines = [header] + ["- " + b for b in beats]
+        if impact_lines:
+            lines.append("")
+            lines.extend(impact_lines)
+        return "\n".join(lines)
+    except Exception:
+        return "CITY RECAP\n- The city kept moving while you were away."
 
 def _is_in_fight(player):
     return bool(getattr(player, 'fight_opponent', None)) and getattr(player, 'fight_hp', None) not in (None, 0)
@@ -443,6 +560,20 @@ def handle_connect():
         return
     # Create a new Player for this session
     acc = accounts.get(username, {})
+
+    # Print a short "world continued" recap before the welcome/room description
+    if isinstance(acc, dict):
+        recap = _build_login_recap(username, acc, world)
+        if recap:
+            emit('message', {'data': recap})
+        try:
+            now_iso = datetime.now(timezone.utc).isoformat()
+            acc['last_login'] = now_iso
+            acc['last_seen'] = now_iso
+            save_accounts(accounts)
+        except Exception:
+            pass
+
     player = Player(address=sid, start_room=world.start_room)
     player.username = username
     # Use character name if set, else fallback to username
@@ -614,6 +745,15 @@ def handle_command_event(data):
         emit('player_heal')
     if response:
         emit('message', {'data': response})
+
+    # Record notable player impact events (quest turn-ins, mission clears)
+    evt = getattr(player, '_last_world_event', None)
+    if isinstance(evt, dict) and evt.get('text'):
+        _append_timeline_event(username, evt.get('text'))
+        try:
+            player._last_world_event = None
+        except Exception:
+            pass
     # If player moved rooms, notify them and others in the new room
     new_room = getattr(player, 'current_room', None)
     if prev_room != new_room and new_room is not None:
