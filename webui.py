@@ -382,6 +382,7 @@ def logout():
             accounts[username]['xp_max'] = getattr(player, 'xp_max', accounts[username].get('xp_max', 100))
             accounts[username]['credits'] = int(getattr(player, 'credits', accounts[username].get('credits', 0)))
             accounts[username]['inventory'] = list(getattr(player, 'inventory', accounts[username].get('inventory', [])))
+            accounts[username]['quests'] = dict(getattr(player, 'quests', accounts[username].get('quests', {})) or {})
             accounts[username]['current_room'] = getattr(player, 'current_room', accounts[username].get('current_room', world.start_room))
             for attr in ('hp', 'energy', 'endurance', 'willpower'):
                 accounts[username][attr] = int(getattr(player, attr, accounts[username].get(attr, 100)))
@@ -439,6 +440,12 @@ def handle_connect():
     if isinstance(acc.get('inventory'), list):
         try:
             player.inventory = list(acc.get('inventory'))
+        except Exception:
+            pass
+    # Restore quests if available
+    if isinstance(acc.get('quests'), dict):
+        try:
+            player.quests = dict(acc.get('quests'))
         except Exception:
             pass
     # Restore last location if available

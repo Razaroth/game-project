@@ -133,6 +133,9 @@ class World:
         self.start_room = 'start'
         # Stationary NPCs per room (name, role)
         self.npcs_by_room = {
+            'hall': [
+                {'name': 'Rook', 'role': 'Fixer'}
+            ],
             'rust_and_circuit': [
                 {'name': 'Grease', 'role': 'Bartender'},
                 {'name': 'Mox', 'role': 'Bouncer'}
@@ -162,6 +165,53 @@ class World:
                 {'name': 'Porter Drone', 'role': 'Concierge'}
             ]
         }
+
+        # Basic missions offered by NPCs (kept simple: fetch/turn-in item quests)
+        # Each mission is identified by a stable id so it can be persisted per account.
+        self.missions_by_npc = {
+            # Early-game mission in starter area
+            'rook': {
+                'id': 'rook_chip_run',
+                'title': 'Chip Run',
+                'description': "Bring me an Encrypted Chip. I’ll pay and bump your rep.",
+                'required_item': 'Encrypted Chip',
+                'reward_xp': 25,
+                'reward_credits': 40,
+            },
+            # Bar/market missions using items that already exist in loot/shop tables
+            'grease': {
+                'id': 'grease_spare_parts',
+                'title': 'Spare Parts',
+                'description': "Find a Cyberdeck Fragment. I’ll trade credits for it.",
+                'required_item': 'Cyberdeck Fragment',
+                'reward_xp': 20,
+                'reward_credits': 35,
+            },
+            'patch': {
+                'id': 'patch_vr_chip',
+                'title': 'Glitched VR Chip',
+                'description': "Bring me a VR Chip. I want to inspect its firmware.",
+                'required_item': 'VR Chip',
+                'reward_xp': 20,
+                'reward_credits': 30,
+            },
+            'cipher': {
+                'id': 'cipher_red_eye',
+                'title': 'Red Eye Sample',
+                'description': "Score me a Vial of Red Eye. Quietly.",
+                'required_item': 'Vial of Red Eye',
+                'reward_xp': 30,
+                'reward_credits': 60,
+            },
+            'vera': {
+                'id': 'vera_energy_drink',
+                'title': 'Cold Energy',
+                'description': "Bring me an Energy Drink from the street stalls.",
+                'required_item': 'Energy Drink',
+                'reward_xp': 10,
+                'reward_credits': 15,
+            },
+        }
         # Dynamic mobs (e.g., roaming gangs) as counts per room
         self.mobs_by_room = {}
         # Define mob types with weights and base HP
@@ -180,6 +230,11 @@ class World:
 
     def get_npcs(self, room_name):
         return list(self.npcs_by_room.get(room_name, []))
+
+    def get_mission_for_npc(self, npc_name):
+        if not npc_name:
+            return None
+        return self.missions_by_npc.get(str(npc_name).strip().lower())
 
     def get_mobs_in_room(self, room_name):
         # Return expanded list of mob names based on counts

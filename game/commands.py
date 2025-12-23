@@ -1,5 +1,49 @@
 import random
 
+
+def _player_quests(player):
+    quests = getattr(player, 'quests', None)
+    if not isinstance(quests, dict):
+        quests = {}
+        try:
+            player.quests = quests
+        except Exception:
+            pass
+    return quests
+
+
+def _persist_player_quests(player, accounts, save_accounts):
+    if accounts is None or save_accounts is None:
+        return
+    username = getattr(player, 'username', None)
+    if not username or username not in accounts:
+        return
+    try:
+        accounts[username]['quests'] = dict(_player_quests(player))
+        save_accounts(accounts)
+    except Exception:
+        return
+
+
+def _find_npc_in_room(world, player, target_text):
+    target = (target_text or '').strip().lower()
+    if not target:
+        return None
+    npcs = world.get_npcs(player.current_room) if hasattr(world, 'get_npcs') else []
+    for npc in npcs:
+        if target == npc.get('name', '').lower() or target == npc.get('role', '').lower():
+            return npc
+        if target in npc.get('name', '').lower() or target in npc.get('role', '').lower():
+            return npc
+    return None
+
+
+def _mission_state_for(player, mission_id):
+    q = _player_quests(player).get(mission_id)
+    if isinstance(q, dict):
+        return q.get('status')
+    return None
+
 def handle_command(command, player, world, accounts=None, save_accounts=None):
     # Search command for loot after fights
     if command == 'search':
@@ -277,24 +321,153 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
         npcs = world.get_npcs(player.current_room) if hasattr(world, 'get_npcs') else []
         if not npcs:
             return "No one seems interested in talking."
-        # Find a matching NPC by name or role
-        match = None
-        for npc in npcs:
-            if target in npc.get('name','').lower() or target in npc.get('role','').lower():
-                match = npc
-                break
+
+        match = _find_npc_in_room(world, player, target)
         if not match:
             names = ', '.join([n['name'] for n in npcs])
             return f"You don't see {target}. NPCs here: {names}"
-        role = match.get('role','')
-        if role in ('Bartender','Vendor','Fence','Attendant'):
-            return f"{match['name']} ({role}): 'For sale — try: shop'"
-        elif role in ('Receptionist','Concierge'):
-            return f"{match['name']} ({role}) nods politely. 'Welcome. Mind the security drones.'"
-        elif role == 'DJ':
-            return f"{match['name']} (DJ) barely hears you over the bass. Lights flare in response."
-        else:
-            return f"{match['name']} ({role}) acknowledges you with a curt nod."
+
+        role = match.get('role', '')
+        npc_name = match.get('name', '')
+        mission = world.get_mission_for_npc(npc_name) if hasattr(world, 'get_mission_for_npc') else None
+        if mission:
+            mid = mission.get('id')
+            state = _mission_state_for(player, mid)
+            req_item = mission.get('required_item')
+            if state == 'completed':
+                return f"{npc_name} ({role}): 'We’re square. Come back later.'"
+            if state == 'accepted':
+                has_item = any((i or '').lower() == str(req_item).lower() for i in getattr(player, 'inventory', []))
+                if has_item:
+                    return (
+                        f"{npc_name} ({role}): 'You got it? Hand it over.'\n"
+                        f"Turn-in: {mission.get('title')} — type `turnin {mid}`"
+                    )
+                return (
+                    f"{npc_name} ({role}): '{mission.get('title')}: {mission.get('description')}'\n"
+                    f"Need: {req_item}."
+                )
+            return (
+                f"{npc_name} ({role}): '{mission.get('title')}: {mission.get('description')}'\n"
+                f"Need: {req_item}. Reward: {mission.get('reward_credits', 0)} cr, {mission.get('reward_xp', 0)} XP.\n"
+                f"Type `accept {mid}` to accept."
+            )
+
+        if role in ('Bartender', 'Vendor', 'Fence', 'Attendant'):
+            return f"{npc_name} ({role}): 'For sale — try: shop'"
+        if role in ('Receptionist', 'Concierge'):
+            return f"{npc_name} ({role}) nods politely. 'Welcome. Mind the security drones.'"
+        if role == 'DJ':
+            return f"{npc_name} (DJ) barely hears you over the bass. Lights flare in response."
+        return f"{npc_name} ({role}) acknowledges you with a curt nod."
+
+    elif command == 'quests':
+        quests = _player_quests(player)
+        if not quests:
+            return "You have no active missions. Try `talk <npc>` to find work."
+        active = []
+        done = []
+        for mid, info in quests.items():
+            if not isinstance(info, dict):
+                continue
+            title = info.get('title', mid)
+            giver = info.get('giver', '?')
+            status = info.get('status', 'accepted')
+            line = f"{mid}: {title} (from {giver}) [{status}]"
+            if status == 'completed':
+                done.append(line)
+            else:
+                active.append(line)
+        parts = []
+        if active:
+            parts.append("Active:\n" + "\n".join(active))
+        if done:
+            parts.append("Completed:\n" + "\n".join(done))
+        return "\n\n".join(parts) if parts else "You have no active missions."
+
+    elif command.startswith('accept '):
+        token = command[7:].strip().lower()
+        if not token:
+            return "Accept what? Try `accept <mission_id>`."
+        # Only allow accepting missions from NPCs in the current room
+        npcs = world.get_npcs(player.current_room) if hasattr(world, 'get_npcs') else []
+        available = []
+        for npc in npcs:
+            mission = world.get_mission_for_npc(npc.get('name')) if hasattr(world, 'get_mission_for_npc') else None
+            if mission and mission.get('id'):
+                available.append((npc, mission))
+        chosen = None
+        for npc, mission in available:
+            mid = str(mission.get('id')).lower()
+            if token == mid or token == str(npc.get('name', '')).lower():
+                chosen = (npc, mission)
+                break
+        if not chosen:
+            if not available:
+                return "No missions available here. Try `talk <npc>` somewhere else."
+            mids = ", ".join(sorted({m.get('id') for _, m in available}))
+            return f"Unknown mission. Available here: {mids}"
+        npc, mission = chosen
+        mid = mission.get('id')
+        state = _mission_state_for(player, mid)
+        if state == 'completed':
+            return "You already completed that mission."
+        if state == 'accepted':
+            return "You already accepted that mission."
+        quests = _player_quests(player)
+        quests[mid] = {
+            'status': 'accepted',
+            'giver': npc.get('name'),
+            'title': mission.get('title', mid),
+        }
+        _persist_player_quests(player, accounts, save_accounts)
+        return f"Mission accepted: {mission.get('title')} (need: {mission.get('required_item')})."
+
+    elif command.startswith('turnin '):
+        token = command[7:].strip().lower()
+        if not token:
+            return "Turn in what? Try `turnin <mission_id>`."
+        quests = _player_quests(player)
+        # Find mission from any NPC in this room
+        npcs = world.get_npcs(player.current_room) if hasattr(world, 'get_npcs') else []
+        available = []
+        for npc in npcs:
+            mission = world.get_mission_for_npc(npc.get('name')) if hasattr(world, 'get_mission_for_npc') else None
+            if mission and mission.get('id'):
+                available.append((npc, mission))
+        chosen = None
+        for npc, mission in available:
+            mid = str(mission.get('id')).lower()
+            if token == mid or token == str(npc.get('name', '')).lower():
+                chosen = (npc, mission)
+                break
+        if not chosen:
+            return "No matching mission to turn in here."
+        npc, mission = chosen
+        mid = mission.get('id')
+        state = _mission_state_for(player, mid)
+        if state != 'accepted':
+            return "You haven’t accepted that mission yet."
+        req_item = mission.get('required_item')
+        inv = list(getattr(player, 'inventory', []))
+        idx = next((i for i, it in enumerate(inv) if (it or '').lower() == str(req_item).lower()), None)
+        if idx is None:
+            return f"You still need: {req_item}."
+        # Remove one required item, grant rewards
+        inv.pop(idx)
+        player.inventory = inv
+        player.xp = int(getattr(player, 'xp', 0)) + int(mission.get('reward_xp', 0) or 0)
+        player.credits = int(getattr(player, 'credits', 0)) + int(mission.get('reward_credits', 0) or 0)
+        quests[mid] = {
+            'status': 'completed',
+            'giver': npc.get('name'),
+            'title': mission.get('title', mid),
+        }
+        _persist_player_quests(player, accounts, save_accounts)
+        return (
+            f"Mission complete: {mission.get('title')}! "
+            f"(+{int(mission.get('reward_credits', 0) or 0)} cr, +{int(mission.get('reward_xp', 0) or 0)} XP)"
+        )
     elif command.startswith("buy "):
         item_raw = command[4:].strip()
         item = item_raw.lower()

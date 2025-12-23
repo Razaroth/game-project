@@ -32,6 +32,8 @@ class Player:
         self.tech = 10
         self.speed = 10
         self.abilities = []
+        # Quest log keyed by mission id: {status: 'accepted'|'completed', giver: <npc>, title: <title>}
+        self.quests = {}
         self.apply_race_class()
 
     def get_attack(self):
