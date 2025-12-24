@@ -14,10 +14,17 @@ def _safe_float(value, default=0.0):
         return float(default)
 
 
-# Delay (seconds) between *lines* when sending text to console clients.
-# Set env var MUD_LINE_DELAY_SEC=0 to disable.
-# Back-compat: if MUD_LINE_DELAY_SEC is unset, fall back to MUD_TEXT_DELAY_SEC.
-LINE_DELAY_SEC = _safe_float(os.getenv('MUD_LINE_DELAY_SEC', os.getenv('MUD_TEXT_DELAY_SEC', '1.00')), 1.00)
+# Output pacing for console/telnet clients.
+#
+# - MUD_OUTPUT_STYLE: 'char' (typewriter) or 'line'
+# - MUD_CHAR_DELAY_SEC: delay between characters (seconds)
+# - MUD_LINE_DELAY_SEC: delay between lines (seconds)
+#
+# Back-compat:
+# - MUD_TEXT_DELAY_SEC will be used as the char delay if MUD_CHAR_DELAY_SEC is unset.
+OUTPUT_STYLE = (os.getenv('MUD_OUTPUT_STYLE', 'char') or 'char').strip().lower()
+CHAR_DELAY_SEC = _safe_float(os.getenv('MUD_CHAR_DELAY_SEC', os.getenv('MUD_TEXT_DELAY_SEC', '0.03')), 0.03)
+LINE_DELAY_SEC = _safe_float(os.getenv('MUD_LINE_DELAY_SEC', '0.10'), 0.10)
 
 class MudServer:
     def __init__(self, host='0.0.0.0', port=4000):
@@ -43,11 +50,28 @@ class MudServer:
         def send_text(text: str):
             if not text:
                 return
-            if LINE_DELAY_SEC and LINE_DELAY_SEC > 0:
-                # Send per-line for smoother pacing than per-character.
+
+            style = OUTPUT_STYLE
+            if style not in ('char', 'line'):
+                style = 'char'
+
+            if style == 'char':
+                delay = CHAR_DELAY_SEC
+                if delay and delay > 0:
+                    # Typewriter: send per-character so clients display incremental output.
+                    for ch in text:
+                        client_sock.sendall(ch.encode(errors='replace'))
+                        time.sleep(delay)
+                else:
+                    client_sock.sendall(text.encode(errors='replace'))
+                return
+
+            # style == 'line'
+            delay = LINE_DELAY_SEC
+            if delay and delay > 0:
                 for line in text.splitlines(keepends=True) or [text]:
                     client_sock.sendall(line.encode(errors='replace'))
-                    time.sleep(LINE_DELAY_SEC)
+                    time.sleep(delay)
             else:
                 client_sock.sendall(text.encode(errors='replace'))
 
