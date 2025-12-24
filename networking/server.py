@@ -17,7 +17,7 @@ def _safe_float(value, default=0.0):
 # Delay (seconds) between *lines* when sending text to console clients.
 # Set env var MUD_LINE_DELAY_SEC=0 to disable.
 # Back-compat: if MUD_LINE_DELAY_SEC is unset, fall back to MUD_TEXT_DELAY_SEC.
-LINE_DELAY_SEC = _safe_float(os.getenv('MUD_LINE_DELAY_SEC', os.getenv('MUD_TEXT_DELAY_SEC', '0.05')), 0.05)
+LINE_DELAY_SEC = _safe_float(os.getenv('MUD_LINE_DELAY_SEC', os.getenv('MUD_TEXT_DELAY_SEC', '0.10')), 0.10)
 
 class MudServer:
     def __init__(self, host='0.0.0.0', port=4000):
