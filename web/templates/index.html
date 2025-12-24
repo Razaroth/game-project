@@ -117,6 +117,71 @@
                 padding: 8px;
             }
         }
+        /* Console row + compass */
+        #console-row {
+            width: 100%;
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        @media (max-width: 700px) {
+            #console-row {
+                flex-direction: column;
+            }
+        }
+        #compass {
+            flex: none;
+            width: 170px;
+            min-width: 170px;
+            height: 100%;
+            min-height: 160px;
+            max-height: calc(40vh - 96px);
+            background: rgba(20,30,20,0.92);
+            box-shadow: 0 0 16px #00ff99cc, 0 0 4px #00ff9944;
+            border: 2px solid #00ff99;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+        #compass-title {
+            color: #00ff99;
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 6px #00ff9988;
+        }
+        .compass-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 46px);
+            grid-template-rows: repeat(3, 46px);
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+        }
+        .compass-btn {
+            width: 46px;
+            height: 46px;
+            background: #101c10;
+            color: #caff70;
+            border: 1.5px solid #00ff99;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            box-shadow: 0 0 8px #00ff9944 inset;
+        }
+        .compass-btn:hover {
+            border-color: #caff70;
+            box-shadow: 0 0 12px #00ff99cc;
+        }
+        .compass-spacer {
+            width: 46px;
+            height: 46px;
+        }
         .game-area {
             flex: 1;
             display: flex;
@@ -477,7 +542,25 @@
         </div>
         <!-- Console Window (Bottom) -->
         <div class="game-area" style="width:96vw;max-width:1400px;flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow:visible;margin:32px auto 96px auto;border-radius:14px;background:none;box-shadow:none;border:none;">
-            <div id="output" style="width:100%;height:100%;min-height:160px;max-height:calc(40vh - 96px);overflow:hidden;background:rgba(20,30,20,0.92);box-shadow:0 0 16px #00ff99cc, 0 0 4px #00ff9944;border:2px solid #00ff99;border-radius:14px;"></div>
+            <div id="console-row">
+                <div id="output" style="flex:1 1 auto;width:100%;height:100%;min-height:160px;max-height:calc(40vh - 96px);overflow:hidden;background:rgba(20,30,20,0.92);box-shadow:0 0 16px #00ff99cc, 0 0 4px #00ff9944;border:2px solid #00ff99;border-radius:14px;"></div>
+                <div id="compass" aria-label="Movement compass">
+                    <div id="compass-title">Move</div>
+                    <div class="compass-grid">
+                        <div class="compass-spacer"></div>
+                        <button class="compass-btn" type="button" data-move-dir="north" aria-label="Go north">N</button>
+                        <div class="compass-spacer"></div>
+
+                        <button class="compass-btn" type="button" data-move-dir="west" aria-label="Go west">W</button>
+                        <div class="compass-spacer"></div>
+                        <button class="compass-btn" type="button" data-move-dir="east" aria-label="Go east">E</button>
+
+                        <div class="compass-spacer"></div>
+                        <button class="compass-btn" type="button" data-move-dir="south" aria-label="Go south">S</button>
+                        <div class="compass-spacer"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <!-- Persistent Bottom Bar -->
@@ -567,6 +650,15 @@
             const output = document.getElementById('output');
             const input = document.getElementById('input');
             const sendBtn = document.getElementById('send-btn');
+            const compassButtons = document.querySelectorAll('[data-move-dir]');
+            compassButtons.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const dir = btn.getAttribute('data-move-dir');
+                    if (!dir) return;
+                    socket.emit('command', { command: 'go ' + dir });
+                    try { input && input.focus(); } catch (e) {}
+                });
+            });
             // Map zoom controls
             const zoomInput = document.getElementById('map-zoom');
             const zoomLabel = document.getElementById('map-zoom-label');
