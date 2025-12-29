@@ -515,6 +515,139 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/city_map')
+def city_map():
+    # Overall world atlas view (opens in a new tab from the main UI)
+    if not session.get('username'):
+        return redirect(url_for('login'))
+
+    username = session.get('username')
+    acc = accounts.get(username, {}) if username else {}
+
+    # Prefer live in-memory player location; fall back to persisted account location.
+    cur = None
+    try:
+        p = web_players.get(username)
+        cur = getattr(p, 'current_room', None) if p else None
+    except Exception:
+        cur = None
+    if not cur:
+        if isinstance(acc, dict) and isinstance(acc.get('current_room'), str):
+            cur = acc.get('current_room')
+    if not cur:
+        cur = world.start_room
+
+    # Build a rooms payload. Hide mission-instance rooms by default.
+    include = set()
+    for rid in (getattr(world, 'rooms', {}) or {}).keys():
+        try:
+            if hasattr(world, 'is_instance_room') and world.is_instance_room(rid):
+                continue
+        except Exception:
+            if str(rid).startswith('inst_'):
+                continue
+        include.add(rid)
+
+    # If the player is currently in a mission instance, include that instance's rooms too.
+    try:
+        p = web_players.get(username)
+        inst = world.get_instance_for_player(p) if (p and hasattr(world, 'get_instance_for_player')) else None
+        if isinstance(inst, dict):
+            for rid in (inst.get('rooms') or []):
+                include.add(rid)
+    except Exception:
+        pass
+    include.add(cur)
+
+    rooms_payload = {}
+    for rid in include:
+        info = (getattr(world, 'rooms', {}) or {}).get(rid)
+        if isinstance(info, dict):
+            rooms_payload[rid] = {
+                'description': info.get('description', ''),
+                'exits': dict(info.get('exits', {}) or {}) if isinstance(info.get('exits'), dict) else {},
+            }
+
+    # Build per-room details snapshot.
+    details_payload = {}
+    try:
+        import game.commands as game_commands
+    except Exception:
+        game_commands = None
+
+    for rid in rooms_payload.keys():
+        try:
+            npcs = world.get_npcs(rid) if hasattr(world, 'get_npcs') else []
+        except Exception:
+            npcs = []
+        try:
+            mobs = world.get_mobs_in_room(rid) if hasattr(world, 'get_mobs_in_room') else []
+        except Exception:
+            mobs = []
+        try:
+            shop = world.get_shop_inventory(rid) if hasattr(world, 'get_shop_inventory') else {}
+        except Exception:
+            shop = {}
+
+        category = None
+        danger = None
+        if game_commands is not None:
+            try:
+                category = game_commands._room_category(world, rid)
+            except Exception:
+                category = None
+            try:
+                danger = game_commands._danger_rating(world, rid, mobs)
+            except Exception:
+                danger = None
+
+        missions = []
+        if hasattr(world, 'get_mission_for_npc'):
+            for npc in (npcs or []):
+                if not isinstance(npc, dict):
+                    continue
+                name = npc.get('name')
+                if not name:
+                    continue
+                try:
+                    m = world.get_mission_for_npc(name)
+                except Exception:
+                    m = None
+                if isinstance(m, dict) and m.get('id'):
+                    missions.append({
+                        'id': m.get('id'),
+                        'title': m.get('title'),
+                        'required_item': m.get('required_item'),
+                        'reward_xp': m.get('reward_xp'),
+                        'reward_credits': m.get('reward_credits'),
+                    })
+
+        # Include quest status for this user if possible
+        quest_status = {}
+        if isinstance(acc, dict) and isinstance(acc.get('quests'), dict):
+            for mid, q in acc.get('quests', {}).items():
+                if isinstance(q, dict) and q.get('status'):
+                    quest_status[str(mid)] = q.get('status')
+
+        details_payload[rid] = {
+            'category': category,
+            'danger': danger,
+            'npcs': npcs,
+            'mobs': mobs,
+            'shop': shop,
+            'missions': missions,
+            'quest_status': quest_status,
+        }
+
+    return render_template(
+        'city_map.html',
+        rooms=rooms_payload,
+        details=details_payload,
+        current_room=cur,
+        start_room=world.start_room,
+    )
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
