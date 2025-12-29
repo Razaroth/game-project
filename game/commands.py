@@ -378,6 +378,7 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                 return "You don't have a Vial of Red Eye to use."
             player.red_eye_used = True
             player.attack_boost = 0.10
+            player.attack_boost_source = 'red_eye'
             return "You consume the Vial of Red Eye. Your attack power increases by 10%!"
 
         if inv_l == 'energy drink':
@@ -395,8 +396,10 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                 import time as _time
                 player.attack_boost = max(float(getattr(player, 'attack_boost', 0) or 0), 0.15)
                 player.attack_boost_expires_at = _time.time() + 90.0
+                player.attack_boost_source = 'adrenaline'
             except Exception:
                 player.attack_boost = max(float(getattr(player, 'attack_boost', 0) or 0), 0.15)
+                player.attack_boost_source = 'adrenaline'
             player.energy = min(100, int(getattr(player, 'energy', 100) or 0) + 25)
             player.endurance = min(100, int(getattr(player, 'endurance', 100) or 0) + 25)
             return "You slam an Adrenaline Shot. Your pulse spikes and your muscles wake up. (+25 Energy, +25 END, +15% Atk for a bit)"

@@ -65,6 +65,7 @@ class Player:
 
         expires_at = getattr(self, 'attack_boost_expires_at', None)
         if expires_at is not None:
+            expired_source = getattr(self, 'attack_boost_source', None)
             try:
                 exp = float(expires_at)
             except Exception:
@@ -77,8 +78,23 @@ class Player:
                     self.attack_boost_expires_at = None
 
                 # If Red Eye was used, keep its permanent +10%; otherwise clear boost.
-                self.attack_boost = 0.10 if getattr(self, 'red_eye_used', False) else 0
-                self._queue_notice("Your adrenaline rush fades.")
+                if getattr(self, 'red_eye_used', False):
+                    self.attack_boost = 0.10
+                    self.attack_boost_source = 'red_eye'
+                else:
+                    self.attack_boost = 0
+                    try:
+                        delattr(self, 'attack_boost_source')
+                    except Exception:
+                        self.attack_boost_source = None
+
+                if expired_source == 'adrenaline':
+                    self._queue_notice("Your adrenaline rush fades.")
+                elif expired_source == 'red_eye':
+                    # Red Eye should not be expiring; keep message generic if this happens.
+                    self._queue_notice("The edge fades.")
+                else:
+                    self._queue_notice("The boost fades.")
 
 
     def get_attack(self):
