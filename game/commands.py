@@ -1,6 +1,57 @@
 import random
 
 
+_VENDOR_ROLES = ('Bartender', 'Vendor', 'Fence', 'Attendant')
+
+
+def _pretty_room_name(room_id: str) -> str:
+    rid = str(room_id or '').strip()
+    if not rid:
+        return ''
+    # Simple, readable formatting for ids like neon_plaza -> Neon Plaza
+    return rid.replace('_', ' ').strip().title()
+
+
+def _is_instance_room(world, room_id: str) -> bool:
+    try:
+        if hasattr(world, 'is_instance_room'):
+            return bool(world.is_instance_room(room_id))
+    except Exception:
+        pass
+    return str(room_id or '').startswith('inst_')
+
+
+def _resolve_room_query(world, query: str):
+    q = (query or '').strip().lower()
+    if not q:
+        return None
+    if q in ('here', 'current', 'this'):
+        return '__CURRENT__'
+
+    rooms = getattr(world, 'rooms', {}) or {}
+    # Exact match
+    for rid in rooms.keys():
+        if str(rid).lower() == q:
+            return rid
+    # Contains match on id
+    hits = [rid for rid in rooms.keys() if q in str(rid).lower()]
+    if len(hits) == 1:
+        return hits[0]
+    # Contains match on pretty name
+    pretty_hits = [rid for rid in rooms.keys() if q in _pretty_room_name(rid).lower()]
+    if len(pretty_hits) == 1:
+        return pretty_hits[0]
+    return None
+
+
+def _room_vendor_here(world, room_id: str) -> bool:
+    try:
+        npcs = world.get_npcs(room_id) if hasattr(world, 'get_npcs') else []
+    except Exception:
+        npcs = []
+    return any((n or {}).get('role') in _VENDOR_ROLES for n in (npcs or []))
+
+
 def _inv_find(player, query):
     q = (query or '').strip().lower()
     if not q:
@@ -110,6 +161,7 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             "  look | l",
             "  go <north|south|east|west>",
             "  go out   (leave an alley run when available)",
+            "  map | citymap [room]  (list rooms or inspect one)",
             "",
             "COMBAT",
             "  attack   (only while in a fight)",
@@ -141,6 +193,101 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             "  name <new_name>",
             "  quit | exit",
         ]
+        return "\n".join(lines)
+
+    # City Map: overview + inspect
+    if cmd_l == 'citymap' or cmd_l == 'map' or cmd_l.startswith('citymap ') or cmd_l.startswith('map '):
+        # Parse optional room query
+        parts = cmd.split(maxsplit=1)
+        arg = parts[1].strip() if len(parts) > 1 else ''
+        resolved = _resolve_room_query(world, arg) if arg else None
+
+        rooms = getattr(world, 'rooms', {}) or {}
+        current_room = getattr(player, 'current_room', None)
+        in_instance = _is_instance_room(world, current_room)
+
+        # Inspect view
+        if resolved is not None:
+            if resolved == '__CURRENT__':
+                room_id = current_room
+            else:
+                room_id = resolved
+
+            if not room_id or room_id not in rooms:
+                return "Unknown room. Use: citymap (to list) or citymap <room_id>."
+
+            info = rooms.get(room_id, {}) or {}
+            desc = str(info.get('description') or '').strip()
+            exits = info.get('exits') if isinstance(info.get('exits'), dict) else {}
+            exits_txt = ', '.join([f"{d} -> {t}" for d, t in exits.items()]) if exits else 'None'
+
+            npcs = []
+            try:
+                npcs = world.get_npcs(room_id) if hasattr(world, 'get_npcs') else []
+            except Exception:
+                npcs = []
+            mobs = []
+            try:
+                mobs = world.get_mobs_in_room(room_id) if hasattr(world, 'get_mobs_in_room') else []
+            except Exception:
+                mobs = []
+
+            npc_txt = 'None'
+            if npcs:
+                npc_txt = ', '.join([f"{n.get('name')} ({n.get('role')})".strip() for n in npcs if isinstance(n, dict)])
+            mob_txt = 'None'
+            if mobs:
+                # show counts
+                counts = {}
+                for m in mobs:
+                    counts[m] = counts.get(m, 0) + 1
+                mob_txt = ', '.join([f"{k} x{v}" if v > 1 else str(k) for k, v in counts.items()])
+
+            shop_txt = 'Yes' if _room_vendor_here(world, room_id) else 'No'
+            name = _pretty_room_name(room_id) or str(room_id)
+
+            return (
+                "CITY MAP — ROOM DETAILS\n"
+                f"Room: {name} (id: {room_id})\n"
+                f"Exits: {exits_txt}\n"
+                f"Shop: {shop_txt}\n"
+                f"NPCs: {npc_txt}\n"
+                f"Mobs: {mob_txt}\n"
+                "\n"
+                f"{desc}".strip()
+            )
+
+        # Overview list
+        # By default, hide mission-instance rooms unless the player is currently in one.
+        room_ids = []
+        for rid in rooms.keys():
+            if not in_instance and _is_instance_room(world, rid):
+                continue
+            room_ids.append(rid)
+        room_ids = sorted(room_ids, key=lambda r: str(r))
+
+        lines = [
+            "CITY MAP (ALL ROOMS)",
+            "Use: citymap <room_id> (or Shift+click a room on the web map)",
+            "",
+        ]
+        for rid in room_ids:
+            info = rooms.get(rid, {}) or {}
+            exits = info.get('exits') if isinstance(info.get('exits'), dict) else {}
+            exit_dirs = ', '.join(sorted(exits.keys())) if exits else '-'
+            npc_mark = ''
+            try:
+                npc_mark = ' [NPC]' if (hasattr(world, 'get_npcs') and world.get_npcs(rid)) else ''
+            except Exception:
+                npc_mark = ''
+            mob_mark = ''
+            try:
+                mob_mark = ' [MOB]' if (hasattr(world, 'get_mobs_in_room') and world.get_mobs_in_room(rid)) else ''
+            except Exception:
+                mob_mark = ''
+            shop_mark = ' [SHOP]' if _room_vendor_here(world, rid) else ''
+            cur = '*' if rid == current_room else ' '
+            lines.append(f"{cur} {rid} — exits: {exit_dirs}{npc_mark}{mob_mark}{shop_mark}")
         return "\n".join(lines)
 
     # Mission instances: start only from back alleys

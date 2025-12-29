@@ -1300,7 +1300,16 @@
                     const target = ev.target;
                     const roomEl = target && target.closest ? target.closest('[data-room]') : null;
                     const roomTarget = roomEl && roomEl.getAttribute ? roomEl.getAttribute('data-room') : (target && target.getAttribute && target.getAttribute('data-room'));
-                    if (!roomTarget || roomTarget === currentRoom) return;
+                    if (!roomTarget) return;
+
+                    // City Map inspect mode: Shift+click any room to print details.
+                    if (ev.shiftKey) {
+                        const cmd = (roomTarget === currentRoom) ? 'citymap here' : ('citymap ' + roomTarget);
+                        window.socket.emit('command', { command: cmd });
+                        return;
+                    }
+
+                    if (roomTarget === currentRoom) return;
                     const exits = rooms[currentRoom]?.exits || {};
                     let dir = null;
                     for (const [k,v] of Object.entries(exits)) { if (v === roomTarget) { dir = k; break; } }
