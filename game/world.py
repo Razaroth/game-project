@@ -651,6 +651,8 @@ class World:
             self.mobs_by_room.setdefault(dst, {})
             self.mobs_by_room[dst][mob_name] = self.mobs_by_room[dst].get(mob_name, 0) + 1
 
+        return moves
+
     def take_mob(self, room_name, name):
         # Remove one mob instance by name from a room, if present
         if room_name in self.mobs_by_room and name in self.mobs_by_room[room_name]:

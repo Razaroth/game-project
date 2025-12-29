@@ -381,10 +381,39 @@ def _start_mob_loop():
     def loop():
         while True:
             try:
-                world.tick_roaming()
+                moves = world.tick_roaming() or []
+
+                # Announce mobs entering rooms players occupy.
+                # Aggregate per destination room so we only emit one message per room per tick.
+                entered_by_room = {}
+                for src, dst, mob_name in moves:
+                    if not dst or not mob_name:
+                        continue
+                    entered_by_room.setdefault(dst, {})
+                    entered_by_room[dst][mob_name] = entered_by_room[dst].get(mob_name, 0) + 1
+
+                def _pluralize(name, count):
+                    if count == 1:
+                        return name
+                    n = str(name)
+                    if n.endswith('s'):
+                        return n
+                    return n + 's'
+
                 for username, player in list(web_players.items()):
                     sid = getattr(player, 'address', None)
                     if sid:
+                        cur = getattr(player, 'current_room', None)
+                        if cur in entered_by_room:
+                            parts = []
+                            for mob_name, cnt in entered_by_room[cur].items():
+                                if int(cnt) == 1:
+                                    parts.append(f"A {mob_name} enters the area.")
+                                else:
+                                    parts.append(f"A gang of {int(cnt)} {_pluralize(mob_name, int(cnt))} enters the area.")
+                            if parts:
+                                socketio.emit('message', {'data': "\n".join(parts)}, room=sid)
+
                         socketio.emit('player_info', {
                             'name': player.name,
                             'race': player.race,
