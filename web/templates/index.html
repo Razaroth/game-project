@@ -1238,15 +1238,6 @@
                     node += `<polygon points=\"${rightFace}\" fill=\"#00ff99\" fill-opacity=\"0.14\" stroke=\"none\" />`;
                     node += `<polygon points=\"${topPts}\" fill=\"${isCurrent ? '#00ff99' : '#0c150c'}\" fill-opacity=\"${isCurrent ? '0.22' : '0.95'}\" stroke=\"#00ff99\" stroke-width=\"2\" filter=\"url(#mudMapNeonGlow)\" />`;
 
-                    // Player marker on current tile
-                    if (isCurrent) {
-                        // Ring + pin marker: easier to spot while moving.
-                        const ringStyle = `stroke-linecap:round; animation:pulsePlayerRing 1200ms ease-in-out infinite;`;
-                        node += `<circle cx=\"${cx}\" cy=\"${cy}\" r=\"20\" fill=\"none\" stroke=\"#00ff99\" stroke-width=\"3\" style=\"${ringStyle}\" filter=\"url(#mudMapNeonGlow)\" />`;
-                        const pin = `${cx},${cy - 10} ${cx + 9},${cy} ${cx},${cy + 10} ${cx - 9},${cy}`;
-                        node += `<polygon points=\"${pin}\" fill=\"#caff70\" fill-opacity=\"0.9\" stroke=\"#00ff99\" stroke-width=\"1.5\" filter=\"url(#mudMapNeonGlow)\" />`;
-                    }
-
                     // Labels: current always, nearby only when zoomed in
                     const d = depthByRoom[room] ?? 99;
                     const showNearbyLabels = zoom >= 1.15;
@@ -1259,6 +1250,30 @@
 
                     content += `<g data-room=\"${room}\" style=\"cursor:pointer;\">${node}</g>`;
                 }
+
+                // Player marker overlay (rendered last so it can't be covered by tiles/labels)
+                let overlay = '';
+                if (isoPos[currentRoom]) {
+                    const cx = curX;
+                    const cy = curY;
+
+                    const ringStyle = `stroke-linecap:round; animation:pulsePlayerRing 1200ms ease-in-out infinite;`;
+                    const xStyle = `stroke-linecap:round; animation:pulseXStroke 1400ms ease-in-out infinite;`;
+                    const xSize = 14;
+                    const pin = `${cx},${cy - 10} ${cx + 9},${cy} ${cx},${cy + 10} ${cx - 9},${cy}`;
+
+                    overlay += `
+                        <g style=\"pointer-events:none;\">
+                            <circle cx=\"${cx}\" cy=\"${cy}\" r=\"20\" fill=\"none\" stroke=\"#00ff99\" stroke-width=\"3\" style=\"${ringStyle}\" filter=\"url(#mudMapNeonGlow)\" />
+                            <polygon points=\"${pin}\" fill=\"#caff70\" fill-opacity=\"0.9\" stroke=\"#00ff99\" stroke-width=\"1.5\" filter=\"url(#mudMapNeonGlow)\" />
+
+                            <!-- High-contrast X marker (black outline + neon stroke) -->
+                            <line x1=\"${cx - xSize}\" y1=\"${cy - xSize}\" x2=\"${cx + xSize}\" y2=\"${cy + xSize}\" stroke=\"rgba(0,0,0,0.8)\" stroke-width=\"6\" />
+                            <line x1=\"${cx - xSize}\" y1=\"${cy + xSize}\" x2=\"${cx + xSize}\" y2=\"${cy - xSize}\" stroke=\"rgba(0,0,0,0.8)\" stroke-width=\"6\" />
+                            <line x1=\"${cx - xSize}\" y1=\"${cy - xSize}\" x2=\"${cx + xSize}\" y2=\"${cy + xSize}\" stroke=\"#00ff99\" stroke-width=\"3\" style=\"${xStyle}\" filter=\"url(#mudMapNeonGlow)\" />
+                            <line x1=\"${cx - xSize}\" y1=\"${cy + xSize}\" x2=\"${cx + xSize}\" y2=\"${cy - xSize}\" stroke=\"#00ff99\" stroke-width=\"3\" style=\"${xStyle}\" filter=\"url(#mudMapNeonGlow)\" />
+                        </g>`;
+                }
                 // Wrap content with a centered transform to zoom about the midpoint
                 let svg = `<svg id=\"mud-map-svg\" width=\"100%\" height=\"100%\" viewBox=\"0 0 ${width} ${height}\" preserveAspectRatio=\"xMidYMid meet\" style=\"display:block;\">`;
                 svg += `<defs>
@@ -1269,7 +1284,7 @@
                 </defs>`;
                 // Center on current room, then apply zoom and pan
                 // Transform order: center -> scale -> translate (pan - current)
-                svg += `<g transform=\"translate(${cxMid}, ${cyMid}) scale(${zoom}) translate(${panX - curX}, ${panY - curY})\">` + content + `</g>`;
+                svg += `<g transform=\"translate(${cxMid}, ${cyMid}) scale(${zoom}) translate(${panX - curX}, ${panY - curY})\">` + content + overlay + `</g>`;
                 svg += '</svg>';
                 mapArea.innerHTML = svg;
                 // Click to move only if adjacent from current room
