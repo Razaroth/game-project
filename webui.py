@@ -333,7 +333,24 @@ def _start_regen_loop():
         while True:
             try:
                 if regen_enabled:
+                    now = time.time()
                     for username, player in list(web_players.items()):
+                        # Expire timed buffs and notify.
+                        try:
+                            if hasattr(player, 'refresh_timed_effects'):
+                                player.refresh_timed_effects(now=now)
+                        except Exception:
+                            pass
+
+                        sid = getattr(player, 'address', None)
+                        if sid and hasattr(player, 'pop_notices'):
+                            try:
+                                for notice in (player.pop_notices() or []):
+                                    if notice:
+                                        socketio.emit('message', {'data': str(notice)}, room=sid)
+                            except Exception:
+                                pass
+
                         # Skip players in combat
                         if _is_in_fight(player):
                             continue
@@ -344,7 +361,6 @@ def _start_regen_loop():
                                 val = min(100.0, val + rate)
                                 setattr(player, attr, round(val))
                         # Emit updated stats to this player's socket room
-                        sid = getattr(player, 'address', None)
                         if sid:
                             socketio.emit('player_info', {
                                 'name': player.name,

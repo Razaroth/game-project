@@ -88,23 +88,40 @@ class MudServer:
                         entered_by_room.setdefault(dst, {})
                         entered_by_room[dst][mob_name] = entered_by_room[dst].get(mob_name, 0) + 1
 
-                    if entered_by_room:
-                        with self._lock:
-                            for client_sock, player in list(self.clients.items()):
-                                try:
-                                    cur = getattr(player, 'current_room', None)
-                                    if cur not in entered_by_room:
-                                        continue
-                                    parts = []
-                                    for mob_name, cnt in entered_by_room[cur].items():
-                                        if int(cnt) == 1:
-                                            parts.append(f"A {mob_name} enters the area.")
-                                        else:
-                                            parts.append(f"A gang of {int(cnt)} {_pluralize(mob_name, int(cnt))} enters the area.")
-                                    if parts:
-                                        _send_paced(client_sock, "\n".join(parts) + "\n")
-                                except Exception:
+                    now = time.time()
+                    with self._lock:
+                        for client_sock, player in list(self.clients.items()):
+                            try:
+                                # Timed buff expiry notifications.
+                                if hasattr(player, 'refresh_timed_effects'):
+                                    try:
+                                        player.refresh_timed_effects(now=now)
+                                    except Exception:
+                                        pass
+                                if hasattr(player, 'pop_notices'):
+                                    try:
+                                        for notice in (player.pop_notices() or []):
+                                            if notice:
+                                                _send_paced(client_sock, str(notice) + "\n")
+                                    except Exception:
+                                        pass
+
+                                # Roaming mob announcements.
+                                if not entered_by_room:
                                     continue
+                                cur = getattr(player, 'current_room', None)
+                                if cur not in entered_by_room:
+                                    continue
+                                parts = []
+                                for mob_name, cnt in entered_by_room[cur].items():
+                                    if int(cnt) == 1:
+                                        parts.append(f"A {mob_name} enters the area.")
+                                    else:
+                                        parts.append(f"A gang of {int(cnt)} {_pluralize(mob_name, int(cnt))} enters the area.")
+                                if parts:
+                                    _send_paced(client_sock, "\n".join(parts) + "\n")
+                            except Exception:
+                                continue
                 except Exception:
                     pass
                 time.sleep(interval_sec)
@@ -141,6 +158,15 @@ class MudServer:
                 command = data.decode().strip()
                 response = handle_command(command, player, self.world)
                 _send_paced(client_sock, response + '\n')
+
+                # Flush any pending notices (e.g., buff expirations triggered by combat math).
+                if hasattr(player, 'pop_notices'):
+                    try:
+                        for notice in (player.pop_notices() or []):
+                            if notice:
+                                _send_paced(client_sock, str(notice) + "\n")
+                    except Exception:
+                        pass
             except Exception as e:
                 print(f"Error: {e}")
                 break

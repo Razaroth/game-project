@@ -40,15 +40,49 @@ class Player:
         self.quests = {}
         self.apply_race_class()
 
-    def get_attack(self):
+    def _queue_notice(self, text):
+        if not text:
+            return
+        notices = getattr(self, '_pending_notices', None)
+        if not isinstance(notices, list):
+            notices = []
+        notices.append(str(text))
+        # Keep it bounded.
+        self._pending_notices = notices[-20:]
+
+
+    def pop_notices(self):
+        notices = getattr(self, '_pending_notices', None)
+        if not isinstance(notices, list) or not notices:
+            return []
+        self._pending_notices = []
+        return notices
+
+
+    def refresh_timed_effects(self, now=None):
+        if now is None:
+            now = time.time()
+
         expires_at = getattr(self, 'attack_boost_expires_at', None)
-        if expires_at is not None and time.time() >= float(expires_at):
+        if expires_at is not None:
             try:
-                delattr(self, 'attack_boost_expires_at')
+                exp = float(expires_at)
             except Exception:
-                self.attack_boost_expires_at = None
-            # If Red Eye was used, keep its permanent +10%; otherwise clear boost.
-            self.attack_boost = 0.10 if getattr(self, 'red_eye_used', False) else 0
+                exp = None
+
+            if exp is not None and now >= exp:
+                try:
+                    delattr(self, 'attack_boost_expires_at')
+                except Exception:
+                    self.attack_boost_expires_at = None
+
+                # If Red Eye was used, keep its permanent +10%; otherwise clear boost.
+                self.attack_boost = 0.10 if getattr(self, 'red_eye_used', False) else 0
+                self._queue_notice("Your adrenaline rush fades.")
+
+
+    def get_attack(self):
+        self.refresh_timed_effects()
 
         base = getattr(self, 'strength', 10)
         bonus = 0
