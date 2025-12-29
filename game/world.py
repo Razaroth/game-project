@@ -598,7 +598,7 @@ class World:
             )
         )]
 
-    def _seed_roaming_gangs(self, count=8):
+    def _seed_roaming_gangs(self, count=14):
         import random
         streets = self._street_rooms()
         for _ in range(count):
