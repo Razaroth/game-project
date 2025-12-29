@@ -1,6 +1,38 @@
 import random
 
 
+def _inv_find(player, query):
+    q = (query or '').strip().lower()
+    if not q:
+        return None
+    inv = list(getattr(player, 'inventory', []) or [])
+    # Exact match first
+    exact = [i for i in inv if (i or '').strip().lower() == q]
+    if len(exact) == 1:
+        return exact[0]
+    if len(exact) > 1:
+        return exact[0]
+    # Fuzzy contains match
+    hits = [i for i in inv if q in (i or '').strip().lower()]
+    if len(hits) == 1:
+        return hits[0]
+    # Ambiguous or not found
+    return None
+
+
+def _inv_remove_one(player, item_name):
+    inv = list(getattr(player, 'inventory', []) or [])
+    for idx, it in enumerate(inv):
+        if it == item_name:
+            inv.pop(idx)
+            try:
+                player.inventory = inv
+            except Exception:
+                pass
+            return True
+    return False
+
+
 def _recommended_mission_tier(player):
     try:
         level = int(getattr(player, 'level', 1) or 1)
@@ -320,54 +352,106 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
             player.inventory.append(proper)
             return f"You take the {proper} and add it to your inventory."
 
-    elif command.startswith("use "):
-        item = command[4:].strip().lower()
-        if item == "stimpack":
-            # Consume Stimpack to restore health and endurance
-            inv_name = next((i for i in player.inventory if i.lower() == 'stimpack'), None)
-            if inv_name:
-                player.inventory = [i for i in player.inventory if i != inv_name]
-                player.hp = min(100, getattr(player, 'hp', 100) + 35)
-                player.endurance = min(100, getattr(player, 'endurance', 100) + 25)
-                return "You inject a Stimpack. Your health and endurance surge! (+35 HP, +25 END)"
-            else:
+    elif cmd_l == 'use' or cmd_l.startswith('use '):
+        parts = cmd.split(maxsplit=1)
+        if len(parts) < 2 or not parts[1].strip():
+            return "Use what? Try `use <item>` (example: `use stimpack`)."
+
+        query = parts[1].strip()
+        inv_item = _inv_find(player, query)
+        if not inv_item:
+            return f"You don't have '{query}' to use."
+
+        inv_l = (inv_item or '').strip().lower()
+
+        if inv_l == 'stimpack':
+            if not _inv_remove_one(player, inv_item):
                 return "You don't have a Stimpack to use."
-        if item == "vial of red eye":
-            if 'Vial of Red Eye' in player.inventory:
-                if not hasattr(player, 'red_eye_used') or not player.red_eye_used:
-                    player.red_eye_used = True
-                    player.attack_boost = 0.10
-                    return "You consume the Vial of Red Eye. Your attack power increases by 10%!"
-                else:
-                    return "You've already used the Vial of Red Eye."
-            else:
+            player.hp = min(100, int(getattr(player, 'hp', 100) or 0) + 35)
+            player.endurance = min(100, int(getattr(player, 'endurance', 100) or 0) + 25)
+            return "You inject a Stimpack. Your health and endurance surge! (+35 HP, +25 END)"
+
+        if inv_l in ('vial of red eye', 'red eye vial'):
+            if getattr(player, 'red_eye_used', False):
+                return "You've already used the Vial of Red Eye."
+            if not _inv_remove_one(player, inv_item):
                 return "You don't have a Vial of Red Eye to use."
-        elif command == "mobs":
-            # Diagnostics: list mobs in current and adjacent rooms
-            here_counts = {}
-            if hasattr(world, 'mobs_by_room'):
-                here_counts = dict(world.mobs_by_room.get(player.current_room, {}))
-            def fmt_counts(counts):
-                if not counts:
-                    return "None"
-                return ", ".join([f"{name} x{int(cnt)}" for name, cnt in counts.items()])
-            msg_lines = [f"Mobs here: {fmt_counts(here_counts)}"]
-            exits = world.rooms.get(player.current_room, {}).get('exits', {}) if hasattr(world, 'rooms') else {}
-            for dir_name, target in exits.items():
-                adj_counts = {}
-                if hasattr(world, 'mobs_by_room'):
-                    adj_counts = dict(world.mobs_by_room.get(target, {}))
-                if adj_counts:
-                    msg_lines.append(f"{dir_name} -> {target}: {fmt_counts(adj_counts)}")
-            return "\n".join(msg_lines)
-        elif command == "spawn gang":
-            # Diagnostics: spawn a Gang Member in the current room
-            if hasattr(world, 'mobs_by_room'):
-                world.mobs_by_room.setdefault(player.current_room, {})
-                world.mobs_by_room[player.current_room]['Gang Member'] = world.mobs_by_room[player.current_room].get('Gang Member', 0) + 1
-                return f"A Gang Member appears in {player.current_room}."
-            else:
-                return "Spawning mobs is not supported in this world."
+            player.red_eye_used = True
+            player.attack_boost = 0.10
+            return "You consume the Vial of Red Eye. Your attack power increases by 10%!"
+
+        if inv_l == 'energy drink':
+            if not _inv_remove_one(player, inv_item):
+                return "You don't have an Energy Drink to use."
+            player.energy = min(100, int(getattr(player, 'energy', 100) or 0) + 30)
+            player.willpower = min(100, int(getattr(player, 'willpower', 100) or 0) + 15)
+            return "You crack an Energy Drink. Your energy steadies and your focus returns. (+30 Energy, +15 Willpower)"
+
+        if inv_l == 'adrenaline shot':
+            if not _inv_remove_one(player, inv_item):
+                return "You don't have an Adrenaline Shot to use."
+            # Temporary combat edge
+            try:
+                import time as _time
+                player.attack_boost = max(float(getattr(player, 'attack_boost', 0) or 0), 0.15)
+                player.attack_boost_expires_at = _time.time() + 90.0
+            except Exception:
+                player.attack_boost = max(float(getattr(player, 'attack_boost', 0) or 0), 0.15)
+            player.energy = min(100, int(getattr(player, 'energy', 100) or 0) + 25)
+            player.endurance = min(100, int(getattr(player, 'endurance', 100) or 0) + 25)
+            return "You slam an Adrenaline Shot. Your pulse spikes and your muscles wake up. (+25 Energy, +25 END, +15% Atk for a bit)"
+
+        if inv_l == 'emp grenade':
+            if not _inv_remove_one(player, inv_item):
+                return "You don't have an EMP Grenade to use."
+            if not (hasattr(player, 'in_fight') and player.in_fight and getattr(player, 'fight_hp', None) not in (None, 0)):
+                return "You prime the EMP Grenade, but there's no target."
+            dmg = random.randint(22, 38)
+            player.fight_hp = int(getattr(player, 'fight_hp', 0) or 0) - dmg
+            foe = getattr(player, 'fight_opponent', 'enemy') or 'enemy'
+            if player.fight_hp <= 0:
+                player.in_fight = False
+                defeated = foe
+                player.fight_opponent = None
+                player.fight_hp = None
+                player.last_defeated = defeated
+
+                # Preserve mission boss completion behavior
+                inst = world.get_instance_for_player(player) if hasattr(world, 'get_instance_for_player') else None
+                if inst and defeated == inst.get('boss'):
+                    world.complete_mission_instance(player) if hasattr(world, 'complete_mission_instance') else None
+                    bonus_xp = int(inst.get('reward_xp', 0) or 0)
+                    bonus_cr = int(inst.get('reward_credits', 0) or 0)
+                    player.xp = getattr(player, 'xp', 0) + bonus_xp
+                    player.credits = getattr(player, 'credits', 0) + bonus_cr
+                    title = inst.get('title', 'Mission')
+                    try:
+                        tier_txt = inst.get('tier') or ''
+                        if tier_txt:
+                            player._last_world_event = {'text': f"Cleared a {tier_txt} alley boss."}
+                        else:
+                            player._last_world_event = {'text': "Cleared an alley boss."}
+                    except Exception:
+                        pass
+                    return (
+                        f"You toss an EMP Grenade. It detonates in a blue-white scream, frying the {defeated}! (-{dmg} HP)\n"
+                        f"MISSION COMPLETE: {title}! (+{bonus_cr} cr, +{bonus_xp} XP)\n"
+                        "Type 'go out' to leave, or 'leave' to abort and clean up."
+                    )
+
+                xp_gain = random.randint(10, 20)
+                player.xp = getattr(player, 'xp', 0) + xp_gain
+                level_msg = ""
+                if hasattr(player, 'xp_max') and player.xp >= player.xp_max:
+                    player.level = getattr(player, 'level', 1) + 1
+                    player.xp = player.xp - player.xp_max
+                    player.xp_max = int(player.xp_max * 1.2) if hasattr(player, 'xp_max') else 100
+                    level_msg = f"\nYou leveled up! You are now level {player.level}."
+                return f"You toss an EMP Grenade. It detonates in a blue-white scream, frying the {defeated}! (-{dmg} HP)\nYou win the fight! (+{xp_gain} XP){level_msg}"
+
+            return f"You toss an EMP Grenade. It crackles with static and slams the {foe} for {dmg} damage! ({player.fight_hp} HP left)"
+
+        return f"{inv_item} can't be used."
     elif cmd.startswith("go "):
         direction = command[3:].strip()
         result = world.move_player(player, direction)
