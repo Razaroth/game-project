@@ -501,8 +501,8 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                     world.take_mob(player.current_room, opp)
                 return result + f"\n\nA {opp} spots you and rushes in! You're in a fight! Type 'attack' or 'run'."
         return result
-    elif command.startswith("equip "):
-        item_name = command[6:].strip()
+    elif cmd_l.startswith('equip '):
+        item_name = cmd[6:].strip()
         if not item_name:
             return "Specify an item to equip."
         # Simple slot mapping for known items
@@ -548,8 +548,8 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
         except Exception:
             pass
         return f"You equip {inv_match} on your {slot}."
-    elif command.startswith("unequip "):
-        slot = command[8:].strip().lower()
+    elif cmd_l.startswith('unequip '):
+        slot = cmd_l[8:].strip().lower()
         if not slot:
             return "Specify a slot to unequip (e.g., weapon)."
         valid_slots = {'head','body','legs','feet','hands','weapon','offhand','accessory'}
@@ -573,8 +573,8 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
         except Exception:
             pass
         return f"You unequip {item} from your {slot}."
-    elif command.startswith("talk "):
-        target = command[5:].strip().lower()
+    elif cmd_l.startswith('talk '):
+        target = cmd_l[5:].strip().lower()
         if not target:
             return "Talk to whom?"
         npcs = world.get_npcs(player.current_room) if hasattr(world, 'get_npcs') else []

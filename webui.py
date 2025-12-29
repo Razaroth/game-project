@@ -201,6 +201,10 @@ def _persist_player_state(username, player):
         for attr in ('hp', 'energy', 'endurance', 'willpower'):
             acc[attr] = _safe_int(getattr(player, attr, acc.get(attr, 100)), acc.get(attr, 100))
 
+        # Combat stats (equipment and race/class can modify these)
+        for attr in ('strength', 'tech', 'speed'):
+            acc[attr] = _safe_int(getattr(player, attr, acc.get(attr, 10)), acc.get(attr, 10))
+
         # Optional character name
         if getattr(player, 'name', None):
             acc['char_name'] = getattr(player, 'name')
@@ -666,6 +670,14 @@ def handle_connect():
     # Set race and class from account info
     player.race = acc.get('race')
     player.char_class = acc.get('char_class')
+
+    # Apply race/class after setting them (Player.__init__ runs before these are known).
+    try:
+        if hasattr(player, 'apply_race_class'):
+            player.apply_race_class()
+    except Exception:
+        pass
+
     # Restore persisted equipment if available
     if isinstance(acc.get('equipment'), dict):
         try:
@@ -713,6 +725,14 @@ def handle_connect():
             pass
     # Restore core stats if available
     for attr in ('hp', 'energy', 'endurance', 'willpower'):
+        if attr in acc:
+            try:
+                setattr(player, attr, int(acc.get(attr)))
+            except Exception:
+                pass
+
+    # Restore combat stats if available
+    for attr in ('strength', 'tech', 'speed'):
         if attr in acc:
             try:
                 setattr(player, attr, int(acc.get(attr)))
@@ -929,6 +949,10 @@ def handle_command_event(data):
         accounts[username]['current_room'] = getattr(player, 'current_room', accounts[username].get('current_room', world.start_room))
         for attr in ('hp', 'energy', 'endurance', 'willpower'):
             accounts[username][attr] = int(getattr(player, attr, accounts[username].get(attr, 100)))
+
+        # Persist combat stats so equipment effects survive relog.
+        for attr in ('strength', 'tech', 'speed'):
+            accounts[username][attr] = int(getattr(player, attr, accounts[username].get(attr, 10)))
         try:
             save_accounts(accounts)
         except Exception:
