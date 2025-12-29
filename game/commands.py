@@ -72,12 +72,24 @@ def _room_category(world, room_id: str) -> str:
 
 
 def _danger_rating(world, room_id: str, mobs_in_room) -> str:
-    # Keep this simple and grounded in current world state.
+    # Keep this simple and grounded in current world state, but add a baseline risk
+    # by category so areas can feel dangerous even when no mobs are currently present.
     if _is_instance_room(world, room_id):
         return 'HIGH (mission instance)'
+
+    category = _room_category(world, room_id)
     mobs = list(mobs_in_room or [])
     cnt = len(mobs)
     if cnt <= 0:
+        # Baseline risk by area type
+        if category in ('Corporate',):
+            return 'MEDIUM (corporate security presence)'
+        if category in ('Underground', 'Industrial'):
+            return f"MEDIUM ({category.lower()} hazards)"
+        if category in ('Alley',):
+            return 'MEDIUM (alley threats)'
+        if category in ('Market', 'Bar', 'Club', 'Street', 'Avenue', 'Plaza', 'City'):
+            return 'LOW (no hostiles detected)'
         return 'LOW (no hostiles detected)'
     if cnt <= 2:
         return f"MEDIUM ({cnt} hostile{'s' if cnt != 1 else ''} present)"
