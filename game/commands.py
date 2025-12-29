@@ -103,38 +103,45 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
     cmd_l = cmd.lower()
 
     if cmd_l in ('help', '?'):
-        return (
-            "Commands:\n\n"
-            "Movement\n"
-            "- look (l): Re-describe the current room.\n"
-            "- go <north|south|east|west>: Move between rooms.\n"
-            "- go out: Leave an instanced alley mission (when available).\n\n"
-            "Combat\n"
-            "- attack: Attack your current opponent (only in a fight).\n"
-            "- run: Try to escape a fight.\n"
-            "- search: Search after fights for loot (when available).\n\n"
-            "Items & Gear\n"
-            "- inventory: View your inventory (UI panel).\n"
-            "- take <item>: Pick up an item (context-sensitive).\n"
-            "- use <item>: Use a consumable (e.g., use stimpack).\n"
-            "- equip <item>: Equip an item from your inventory.\n"
-            "- unequip <slot>: Remove equipped item (weapon, hands, head, body, legs, feet, offhand, accessory).\n\n"
-            "NPCs & Missions\n"
-            "- talk <npc>: Talk and get mission offers/reminders.\n"
-            "- accept <mission_id>: Accept the NPC mission in your current room.\n"
-            "- turnin <mission_id>: Turn in an accepted mission when you have the required item.\n"
-            "- quests: List your active/completed missions.\n\n"
-            "Alley Runs (Instanced)\n"
-            "- mission [easy|medium|hard]: Start a back-alley run (only from back alleys).\n"
-            "- mission tiers: Show tiers + your recommended tier.\n"
-            "- leave: Abort an active alley run and return to the city.\n\n"
-            "Shops & Meta\n"
-            "- shop: View items for sale (when a vendor is present).\n"
-            "- buy <item>: Buy an item from a shop.\n"
-            "- credits: Show your credit balance.\n"
-            "- name <new_name>: Set your character name.\n"
-            "- quit / exit: End your session."
-        )
+        lines = [
+            "HELP (Cyberdelia EX)",
+            "", 
+            "MOVEMENT",
+            "  look | l",
+            "  go <north|south|east|west>",
+            "  go out   (leave an alley run when available)",
+            "",
+            "COMBAT",
+            "  attack   (only while in a fight)",
+            "  run      (try to escape)",
+            "  search   (loot after fights when available)",
+            "",
+            "ITEMS & GEAR",
+            "  inventory",
+            "  take <item>",
+            "  use <item>     (example: use stimpack)",
+            "  equip <item>",
+            "  unequip <slot> (weapon, hands, head, body, legs, feet, offhand, accessory)",
+            "",
+            "NPCS & MISSIONS",
+            "  talk <npc>",
+            "  accept <mission_id>",
+            "  turnin <mission_id>",
+            "  quests",
+            "",
+            "ALLEY RUNS (INSTANCED)",
+            "  mission [easy|medium|hard]",
+            "  mission tiers",
+            "  leave   (abort an active alley run)",
+            "",
+            "SHOPS & META",
+            "  shop",
+            "  buy <item>",
+            "  credits",
+            "  name <new_name>",
+            "  quit | exit",
+        ]
+        return "\n".join(lines)
 
     # Mission instances: start only from back alleys
     if cmd.startswith('mission'):
@@ -148,7 +155,13 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                 lvl = int(getattr(player, 'level', 1) or 1)
             except Exception:
                 lvl = 1
-            return f"Mission tiers: easy, medium, hard. Use: mission <tier>\nRecommended for you: {rec} (level {lvl})"
+            return (
+                "MISSION TIERS\n"
+                "  easy   medium   hard\n"
+                "\n"
+                "Use: mission <tier>\n"
+                f"Recommended for you: {rec} (level {lvl})"
+            )
         room = getattr(player, 'current_room', '')
         if 'back_alley' not in str(room):
             return "You can only start a mission from a back alley."
