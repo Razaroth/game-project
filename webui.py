@@ -483,9 +483,9 @@ def _start_mob_loop():
                             },
                             'regen_enabled': (regen_enabled and not _is_in_fight(player))
                         }, room=sid)
-                time.sleep(3)
+                time.sleep(1.5)
             except Exception:
-                time.sleep(3)
+                time.sleep(1.5)
     t = threading.Thread(target=loop, daemon=True)
     t.start()
 

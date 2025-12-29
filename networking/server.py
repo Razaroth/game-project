@@ -134,7 +134,7 @@ class MudServer:
         print(f"MUD server started on {self.host}:{self.port}")
 
         # Start roaming enemies/gangs loop for console clients.
-        self._start_roaming_loop(interval_sec=3.0)
+        self._start_roaming_loop(interval_sec=1.5)
 
         while True:
             client_sock, addr = self.server_socket.accept()
