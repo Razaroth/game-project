@@ -1113,6 +1113,7 @@
                 const panY = Number.isFinite(window._mapPanY) ? window._mapPanY : 0;
                 // Build inner content first
                 let content = '';
+                let labels = '';
                 // Draw links first (under tiles)
                 for (const [room, pos] of Object.entries(grid)) {
                     const exits = (rooms[room] && rooms[room].exits) ? rooms[room].exits : {};
@@ -1245,10 +1246,15 @@
                     if (showLabel) {
                         const fontSize = isCurrent ? 13 : 12;
                         const labelY = isCurrent ? (cy - halfH - 10) : (cy + halfH + 20);
-                        node += placeLabelFor(room, cx, cy, prettyRoomName(room), isCurrent, labelY, fontSize);
+                        labels += placeLabelFor(room, cx, cy, prettyRoomName(room), isCurrent, labelY, fontSize);
                     }
 
                     content += `<g data-room=\"${room}\" style=\"cursor:pointer;\">${node}</g>`;
+                }
+
+                // Labels overlay (rendered after all tiles so they can't be covered)
+                if (labels) {
+                    content += `<g style=\"pointer-events:none;\">${labels}</g>`;
                 }
 
                 // Player marker overlay (rendered last so it can't be covered by tiles/labels)
