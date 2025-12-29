@@ -4,6 +4,22 @@ import random
 _VENDOR_ROLES = ('Bartender', 'Vendor', 'Fence', 'Attendant')
 
 
+_SEARCH_LOOT_TABLE = [
+    'Stimpack',
+    'Neon Blade',
+    'Cyberdeck Fragment',
+    '50 credits',
+    'Red Eye Vial',
+    'Encrypted Chip',
+    'Energy Drink',
+    'Ammo',
+    'EMP Grenade',
+    'VR Chip',
+    'Adrenaline Shot',
+    'Armor Vest',
+]
+
+
 def _pretty_room_name(room_id: str) -> str:
     rid = str(room_id or '').strip()
     if not rid:
@@ -19,6 +35,53 @@ def _is_instance_room(world, room_id: str) -> bool:
     except Exception:
         pass
     return str(room_id or '').startswith('inst_')
+
+
+def _room_category(world, room_id: str) -> str:
+    rid = str(room_id or '').strip()
+    low = rid.lower()
+    if not rid:
+        return 'Unknown'
+    if _is_instance_room(world, rid):
+        return 'Mission Instance'
+    if 'plaza' in low:
+        return 'Plaza'
+    if 'avenue' in low:
+        return 'Avenue'
+    if 'street' in low:
+        return 'Street'
+    if 'alley' in low:
+        return 'Alley'
+    if 'market' in low or 'bazaar' in low:
+        return 'Market'
+    if low in ('rust_and_circuit', 'data_leak'):
+        return 'Bar'
+    if 'club' in low or low in ('holo_dive', 'pulse_reactor'):
+        return 'Club'
+    if 'arcology' in low:
+        return 'Arcology'
+    if 'underground' in low or 'metro' in low:
+        return 'Underground'
+    if 'corporate' in low or 'server' in low:
+        return 'Corporate'
+    if 'scrapyard' in low or 'industrial' in low or 'loading_yard' in low:
+        return 'Industrial'
+    if low in ('start', 'hall', 'closet'):
+        return 'Starter'
+    return 'City'
+
+
+def _danger_rating(world, room_id: str, mobs_in_room) -> str:
+    # Keep this simple and grounded in current world state.
+    if _is_instance_room(world, room_id):
+        return 'HIGH (mission instance)'
+    mobs = list(mobs_in_room or [])
+    cnt = len(mobs)
+    if cnt <= 0:
+        return 'LOW (no hostiles detected)'
+    if cnt <= 2:
+        return f"MEDIUM ({cnt} hostile{'s' if cnt != 1 else ''} present)"
+    return f"HIGH ({cnt} hostiles present)"
 
 
 def _resolve_room_query(world, query: str):
@@ -50,6 +113,25 @@ def _room_vendor_here(world, room_id: str) -> bool:
     except Exception:
         npcs = []
     return any((n or {}).get('role') in _VENDOR_ROLES for n in (npcs or []))
+
+
+def _room_missions(world, npcs):
+    missions = []
+    if not npcs:
+        return missions
+    for npc in npcs:
+        if not isinstance(npc, dict):
+            continue
+        name = npc.get('name')
+        if not name:
+            continue
+        try:
+            m = world.get_mission_for_npc(name) if hasattr(world, 'get_mission_for_npc') else None
+        except Exception:
+            m = None
+        if isinstance(m, dict) and m.get('id'):
+            missions.append(m)
+    return missions
 
 
 def _inv_find(player, query):
@@ -243,19 +325,65 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                     counts[m] = counts.get(m, 0) + 1
                 mob_txt = ', '.join([f"{k} x{v}" if v > 1 else str(k) for k, v in counts.items()])
 
-            shop_txt = 'Yes' if _room_vendor_here(world, room_id) else 'No'
+            category = _room_category(world, room_id)
+            danger = _danger_rating(world, room_id, mobs)
+
+            # Shop details
+            shop_lines = []
+            if _room_vendor_here(world, room_id):
+                shop_lines.append('Shop: Yes')
+                try:
+                    catalog = world.get_shop_inventory(room_id) if hasattr(world, 'get_shop_inventory') else {}
+                except Exception:
+                    catalog = {}
+                if isinstance(catalog, dict) and catalog:
+                    items = ', '.join([f"{k} ({v} cr)" for k, v in catalog.items()])
+                    shop_lines.append(f"Shop Inventory: {items}")
+                else:
+                    shop_lines.append('Shop Inventory: (unknown)')
+            else:
+                shop_lines.append('Shop: No')
+
+            # Mission hooks (NPC missions + your status)
+            mission_lines = []
+            missions = _room_missions(world, npcs)
+            if missions:
+                mission_lines.append('Missions:')
+                for m in missions:
+                    mid = m.get('id')
+                    title = m.get('title', mid)
+                    req = m.get('required_item')
+                    reward_xp = int(m.get('reward_xp', 0) or 0)
+                    reward_credits = int(m.get('reward_credits', 0) or 0)
+                    state = _mission_state_for(player, mid) or 'available'
+                    req_txt = f" req: {req}" if req else ''
+                    mission_lines.append(
+                        f"  {mid} — {title} ({state}){req_txt} rewards: +{reward_credits} cr, +{reward_xp} XP"
+                    )
+            else:
+                mission_lines.append('Missions: None')
+
+            # Loot details (grounded in current implementation)
+            loot_lines = [
+                'Loot:',
+                '  Search Loot Pool: ' + ', '.join(_SEARCH_LOOT_TABLE),
+            ]
+
             name = _pretty_room_name(room_id) or str(room_id)
 
-            return (
-                "CITY MAP — ROOM DETAILS\n"
-                f"Room: {name} (id: {room_id})\n"
-                f"Exits: {exits_txt}\n"
-                f"Shop: {shop_txt}\n"
-                f"NPCs: {npc_txt}\n"
-                f"Mobs: {mob_txt}\n"
-                "\n"
-                f"{desc}".strip()
-            )
+            header = [
+                'CITY MAP — ROOM DETAILS',
+                f"Room: {name} (id: {room_id})",
+                f"Category: {category}",
+                f"Danger: {danger}",
+                f"Exits: {exits_txt}",
+                f"NPCs: {npc_txt}",
+                f"Mobs: {mob_txt}",
+            ]
+            out_lines = header + shop_lines + mission_lines + loot_lines + ['']
+            if desc:
+                out_lines.append(desc)
+            return "\n".join(out_lines).strip()
 
         # Overview list
         # By default, hide mission-instance rooms unless the player is currently in one.
@@ -285,9 +413,15 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
                 mob_mark = ' [MOB]' if (hasattr(world, 'get_mobs_in_room') and world.get_mobs_in_room(rid)) else ''
             except Exception:
                 mob_mark = ''
+            mission_mark = ''
+            try:
+                npcs_here = world.get_npcs(rid) if hasattr(world, 'get_npcs') else []
+                mission_mark = ' [MISSION]' if _room_missions(world, npcs_here) else ''
+            except Exception:
+                mission_mark = ''
             shop_mark = ' [SHOP]' if _room_vendor_here(world, rid) else ''
             cur = '*' if rid == current_room else ' '
-            lines.append(f"{cur} {rid} — exits: {exit_dirs}{npc_mark}{mob_mark}{shop_mark}")
+            lines.append(f"{cur} {rid} — exits: {exit_dirs}{npc_mark}{mob_mark}{mission_mark}{shop_mark}")
         return "\n".join(lines)
 
     # Mission instances: start only from back alleys
@@ -357,11 +491,7 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
     # Search command for loot after fights
     if cmd == 'search':
         if hasattr(player, 'last_defeated') and player.last_defeated:
-            loot_table = [
-                'Stimpack', 'Neon Blade', 'Cyberdeck Fragment', '50 credits', 'Red Eye Vial', 'Encrypted Chip', 'Energy Drink',
-                'Ammo', 'EMP Grenade', 'VR Chip', 'Adrenaline Shot', 'Armor Vest'
-            ]
-            loot = random.choice(loot_table)
+            loot = random.choice(_SEARCH_LOOT_TABLE)
             if loot not in player.inventory:
                 player.inventory.append(loot)
                 msg = f"You search the {player.last_defeated} and find {loot}!"
