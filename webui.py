@@ -118,8 +118,24 @@ def load_accounts():
     return data
 
 def save_accounts(accounts):
-    with open(ACCOUNTS_FILE, 'w') as f:
-        json.dump(accounts, f)
+    # Background loops + command handler can write concurrently; guard writes.
+    global _accounts_lock
+    try:
+        _accounts_lock
+    except NameError:
+        _accounts_lock = threading.Lock()
+
+    with _accounts_lock:
+        # Atomic write to avoid partial/corrupt JSON on sudden shutdown.
+        tmp_path = ACCOUNTS_FILE + '.tmp'
+        with open(tmp_path, 'w') as f:
+            json.dump(accounts, f)
+        try:
+            os.replace(tmp_path, ACCOUNTS_FILE)
+        except Exception:
+            # Fallback if replace fails for any reason.
+            with open(ACCOUNTS_FILE, 'w') as f:
+                json.dump(accounts, f)
 
 accounts = load_accounts()
 
@@ -591,6 +607,15 @@ def logout():
     if username and username in web_players and username in accounts:
         player = web_players.get(username)
         _persist_player_state(username, player)
+        # Mirror disconnect cleanup so logout can't leave stale in-memory players.
+        try:
+            world.end_mission_instance(player)
+        except Exception:
+            pass
+        try:
+            del web_players[username]
+        except Exception:
+            pass
     session.pop('username', None)
     return redirect(url_for('login'))
 
