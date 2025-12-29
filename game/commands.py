@@ -80,20 +80,55 @@ def _danger_rating(world, room_id: str, mobs_in_room) -> str:
     category = _room_category(world, room_id)
     mobs = list(mobs_in_room or [])
     cnt = len(mobs)
+
+    # Nearby hostiles (adjacent rooms)
+    nearby_cnt = 0
+    nearby_rooms = 0
+    try:
+        rooms = getattr(world, 'rooms', {}) or {}
+        exits = rooms.get(room_id, {}).get('exits', {}) if isinstance(rooms.get(room_id, {}), dict) else {}
+        if isinstance(exits, dict) and exits and hasattr(world, 'get_mobs_in_room'):
+            seen = set()
+            for _, dst in exits.items():
+                if not dst or dst in seen:
+                    continue
+                seen.add(dst)
+                try:
+                    nmobs = world.get_mobs_in_room(dst) or []
+                except Exception:
+                    nmobs = []
+                n = len(list(nmobs))
+                if n > 0:
+                    nearby_rooms += 1
+                    nearby_cnt += n
+    except Exception:
+        nearby_cnt = 0
+        nearby_rooms = 0
+
+    def _nearby_suffix():
+        if nearby_cnt <= 0:
+            return ''
+        if nearby_rooms == 1:
+            return f"; {nearby_cnt} nearby"
+        return f"; {nearby_cnt} nearby ({nearby_rooms} adjacent rooms)"
+
     if cnt <= 0:
         # Baseline risk by area type
         if category in ('Corporate',):
-            return 'MEDIUM (corporate security presence)'
+            return 'MEDIUM (corporate security presence' + _nearby_suffix() + ')'
         if category in ('Underground', 'Industrial'):
-            return f"MEDIUM ({category.lower()} hazards)"
+            return f"MEDIUM ({category.lower()} hazards" + _nearby_suffix() + ')'
         if category in ('Alley',):
-            return 'MEDIUM (alley threats)'
+            return 'MEDIUM (alley threats' + _nearby_suffix() + ')'
         if category in ('Market', 'Bar', 'Club', 'Street', 'Avenue', 'Plaza', 'City'):
+            if nearby_cnt > 0:
+                # Nearby hostiles should raise caution even if this room is currently clear.
+                return 'MEDIUM (hostiles nearby' + _nearby_suffix() + ')'
             return 'LOW (no hostiles detected)'
         return 'LOW (no hostiles detected)'
     if cnt <= 2:
-        return f"MEDIUM ({cnt} hostile{'s' if cnt != 1 else ''} present)"
-    return f"HIGH ({cnt} hostiles present)"
+        return f"MEDIUM ({cnt} hostile{'s' if cnt != 1 else ''} present" + _nearby_suffix() + ')'
+    return f"HIGH ({cnt} hostiles present" + _nearby_suffix() + ')'
 
 
 def _resolve_room_query(world, query: str):
