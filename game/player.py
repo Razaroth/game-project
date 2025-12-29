@@ -1,4 +1,8 @@
 
+
+import time
+
+
 class Player:
     def __init__(self, address, start_room):
         self.address = address
@@ -37,6 +41,15 @@ class Player:
         self.apply_race_class()
 
     def get_attack(self):
+        expires_at = getattr(self, 'attack_boost_expires_at', None)
+        if expires_at is not None and time.time() >= float(expires_at):
+            try:
+                delattr(self, 'attack_boost_expires_at')
+            except Exception:
+                self.attack_boost_expires_at = None
+            # If Red Eye was used, keep its permanent +10%; otherwise clear boost.
+            self.attack_boost = 0.10 if getattr(self, 'red_eye_used', False) else 0
+
         base = getattr(self, 'strength', 10)
         bonus = 0
         eq = getattr(self, 'equipment', {}) or {}
