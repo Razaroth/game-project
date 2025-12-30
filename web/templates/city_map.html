@@ -118,6 +118,11 @@
             <div class="hint">Click a room to view full details. Current room is marked with an X.</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex:none;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="color:#caff70;font-size:0.85rem;white-space:nowrap;">Zoom</span>
+                <input id="zoom" type="range" min="0.6" max="2.5" step="0.1" value="1" />
+                <span id="zoom-label" style="color:#caff70;font-size:0.85rem;min-width:48px;text-align:right;">100%</span>
+            </div>
             <a class="link" href="/" target="_self">Back</a>
         </div>
     </div>
@@ -469,9 +474,42 @@
         svg += `</svg>`;
 
         mapArea.innerHTML = svg;
+
+        // Persist base viewBox + a sensible zoom center (prefer current-room marker).
+        const svgEl = document.getElementById('atlas-svg');
+        if (svgEl) {
+            svgEl.dataset.baseViewBox = `0 0 ${width} ${height}`;
+            const centerX = isoPos[currentRoom] ? curX : (width / 2);
+            const centerY = isoPos[currentRoom] ? curY : (height / 2);
+            svgEl.dataset.centerX = String(centerX);
+            svgEl.dataset.centerY = String(centerY);
+        }
     }
 
     let selectedRoom = CURRENT_ROOM;
+
+    function applyZoom() {
+        const zoomEl = document.getElementById('zoom');
+        const labelEl = document.getElementById('zoom-label');
+        const svgEl = document.getElementById('atlas-svg');
+        if (!zoomEl || !svgEl) return;
+
+        const z = Math.max(0.1, parseFloat(zoomEl.value || '1'));
+        if (labelEl) labelEl.textContent = `${Math.round(z * 100)}%`;
+
+        const base = (svgEl.dataset.baseViewBox || '').trim().split(/\s+/).map(Number);
+        if (base.length !== 4 || base.some((n) => Number.isNaN(n))) return;
+        const baseW = base[2];
+        const baseH = base[3];
+        const cx = parseFloat(svgEl.dataset.centerX || String(baseW / 2));
+        const cy = parseFloat(svgEl.dataset.centerY || String(baseH / 2));
+
+        const newW = baseW / z;
+        const newH = baseH / z;
+        const x = cx - newW / 2;
+        const y = cy - newH / 2;
+        svgEl.setAttribute('viewBox', `${x} ${y} ${newW} ${newH}`);
+    }
 
     function updateDetails(roomId) {
         const el = document.getElementById('details-text');
@@ -483,6 +521,9 @@
         renderAtlas(ROOMS, CURRENT_ROOM, selectedRoom);
         updateDetails(selectedRoom);
 
+        // Apply zoom after re-rendering the SVG.
+        applyZoom();
+
         const root = document.getElementById('atlas-inner');
         if (!root) return;
         root.onclick = (ev) => {
@@ -493,6 +534,12 @@
             selectedRoom = roomTarget;
             rerender();
         };
+    }
+
+    // Wire zoom slider.
+    const zoomEl = document.getElementById('zoom');
+    if (zoomEl) {
+        zoomEl.addEventListener('input', () => applyZoom());
     }
 
     rerender();
