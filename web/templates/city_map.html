@@ -358,15 +358,22 @@
             const textW = Math.max(30, label.length * approxCharW);
             const boxW = textW + labelPadX * 2;
             const boxH = fontSize + labelPadY * 2;
-            const baseY = cy + halfH + 18;
+            // Push labels further away from the tile to reduce crowding.
+            const baseY = cy + halfH + 34;
+
+            // Anchor near the tile edge for a leader line.
+            const anchorX = cx;
+            const anchorY = cy + halfH + 2;
 
             const candidates = [
                 {dx: 0, dy: 0},
-                {dx: 0, dy: -18},
-                {dx: -50, dy: 0},
-                {dx: 50, dy: 0},
-                {dx: -50, dy: -18},
-                {dx: 50, dy: -18},
+                {dx: 0, dy: -22},
+                {dx: -80, dy: 0},
+                {dx: 80, dy: 0},
+                {dx: -80, dy: -22},
+                {dx: 80, dy: -22},
+                {dx: -120, dy: 0},
+                {dx: 120, dy: 0},
             ];
 
             let chosen = null;
@@ -397,8 +404,16 @@
             const rectW = chosen.box.w;
             const rectH = chosen.box.h;
 
+            // Leader line: from the tile to the label box.
+            // Aim at the closest point on the box edge for a tidy connection.
+            const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+            const lineX2 = clamp(anchorX, rectX + 6, rectX + rectW - 6);
+            const lineY2 = clamp(anchorY, rectY + 6, rectY + rectH - 6);
+            const showLeader = Math.abs(chosen.x - cx) > 1 || Math.abs((chosen.y - baseY)) > 1;
+
             return `
                 <g style="pointer-events:none;">
+                    ${showLeader ? `<line x1="${anchorX}" y1="${anchorY}" x2="${lineX2}" y2="${lineY2}" stroke="#00ff99" stroke-width="2" stroke-opacity="0.22" />` : ''}
                     <rect x="${rectX}" y="${rectY}" width="${rectW}" height="${rectH}" rx="${rx}" fill="${boxFill}" stroke="${boxStroke}" stroke-opacity="0.65" />
                     <text x="${chosen.x}" y="${chosen.y}" text-anchor="middle" font-size="${chosen.fontSize}" font-family="Share Tech Mono, monospace" fill="${fillColor}" style="text-shadow: 0 0 6px rgba(0,255,153,0.35);">${chosen.label}</text>
                 </g>`;
