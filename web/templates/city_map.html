@@ -359,21 +359,31 @@
             const boxW = textW + labelPadX * 2;
             const boxH = fontSize + labelPadY * 2;
             // Push labels further away from the tile to reduce crowding.
-            const baseY = cy + halfH + 34;
+            // This atlas can get dense; favor clarity over compactness.
+            const baseY = cy + halfH + 68;
 
             // Anchor near the tile edge for a leader line.
             const anchorX = cx;
             const anchorY = cy + halfH + 2;
 
+            // Candidate positions are intentionally wide.
+            // We try farther placements early to avoid the "bunched up" look.
             const candidates = [
+                {dx: 0, dy: 46},
+                {dx: -160, dy: 24},
+                {dx: 160, dy: 24},
+                {dx: -220, dy: 8},
+                {dx: 220, dy: 8},
+                {dx: -280, dy: 0},
+                {dx: 280, dy: 0},
                 {dx: 0, dy: 0},
-                {dx: 0, dy: -22},
-                {dx: -80, dy: 0},
-                {dx: 80, dy: 0},
-                {dx: -80, dy: -22},
-                {dx: 80, dy: -22},
-                {dx: -120, dy: 0},
-                {dx: 120, dy: 0},
+
+                // Above/beside fallbacks
+                {dx: 0, dy: -38},
+                {dx: -160, dy: -18},
+                {dx: 160, dy: -18},
+                {dx: -220, dy: -36},
+                {dx: 220, dy: -36},
             ];
 
             let chosen = null;
