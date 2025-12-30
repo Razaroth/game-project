@@ -115,7 +115,7 @@
     <div class="topbar">
         <div style="display:flex;flex-direction:column;min-width:0;">
             <div class="title">Cyberdelia EX — City Map</div>
-            <div class="hint">Click a room to view full details. Current room is marked with an X.</div>
+            <div class="hint">Click a room to view full details. Zoom in to reveal more room names. Current room is marked with an X.</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex:none;">
             <div style="display:flex;align-items:center;gap:8px;">
@@ -220,6 +220,12 @@
     function renderAtlas(rooms, currentRoom, selectedRoom) {
         const mapArea = document.getElementById('atlas-inner');
         if (!mapArea || !rooms) return;
+
+        // Label density control: show all labels only when zoomed in enough.
+        const zoomEl = document.getElementById('zoom');
+        const zoomVal = zoomEl ? parseFloat(zoomEl.value || '1') : 1;
+        const SHOW_ALL_LABELS_ZOOM = 1.8;
+        const showAllLabels = !(Number.isFinite(zoomVal)) ? false : (zoomVal >= SHOW_ALL_LABELS_ZOOM);
 
         // Build a full-world grid by BFS from start room (no depth cap).
         const dirVec = { north:[0,-1], south:[0,1], east:[1,0], west:[-1,0] };
@@ -461,7 +467,10 @@
             node += `<polygon points="${rightFace}" fill="#00ff99" fill-opacity="0.12" stroke="none" />`;
             node += `<polygon points="${topPts}" fill="${baseFill}" fill-opacity="${baseOpacity}" stroke="#00ff99" stroke-width="${strokeW}" filter="url(#mudMapNeonGlow)" />`;
 
-            labels += placeLabelFor(room, cx, cy, prettyRoomName(room), isCurrent);
+            // When zoomed out, render fewer labels to prevent clutter.
+            if (showAllLabels || isCurrent || isSelected) {
+                labels += placeLabelFor(room, cx, cy, prettyRoomName(room), isCurrent);
+            }
             content += `<g data-room="${room}" style="cursor:pointer;">${node}</g>`;
         }
 
