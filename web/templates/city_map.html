@@ -242,11 +242,41 @@
             }
         }
 
-        // Include any rooms not reached (fallback placement)
+        // Include any rooms not reached.
+        // IMPORTANT: Do NOT throw them at huge coordinates (e.g. 9999,9999),
+        // because that explodes the SVG viewBox and makes the map look empty.
+        // Instead, place them in a compact cluster adjacent to the reachable blob.
+        const unreached = [];
         for (const rid of Object.keys(rooms)) {
-            if (grid[rid] === undefined) {
-                grid[rid] = {x: 9999, y: 9999};
+            if (grid[rid] === undefined) unreached.push(rid);
+        }
+
+        if (unreached.length) {
+            let minGX = 0, maxGX = 0, minGY = 0, maxGY = 0;
+            let first = true;
+            for (const p of Object.values(grid)) {
+                if (!p) continue;
+                if (first) {
+                    minGX = maxGX = p.x;
+                    minGY = maxGY = p.y;
+                    first = false;
+                } else {
+                    if (p.x < minGX) minGX = p.x;
+                    if (p.x > maxGX) maxGX = p.x;
+                    if (p.y < minGY) minGY = p.y;
+                    if (p.y > maxGY) maxGY = p.y;
+                }
             }
+
+            const perRow = 8;
+            const gapX = 6;
+            const baseX = maxGX + gapX;
+            const baseY = minGY;
+            unreached.forEach((rid, idx) => {
+                const gx = baseX + (idx % perRow);
+                const gy = baseY + Math.floor(idx / perRow);
+                grid[rid] = { x: gx, y: gy };
+            });
         }
 
         // Isometric projection
