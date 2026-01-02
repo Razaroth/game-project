@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Techie portrait">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101c10"/>
+      <stop offset="1" stop-color="#0f2027"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect x="24" y="24" width="464" height="464" rx="20" fill="none" stroke="#00ff99" stroke-width="4"/>
+
+  <!-- gear -->
+  <circle cx="256" cy="256" r="92" fill="none" stroke="#00ff99" stroke-width="8"/>
+  <circle cx="256" cy="256" r="36" fill="none" stroke="#00ff99" stroke-width="8"/>
+  <path d="M256 134v-32M256 410v32M134 256h-32M410 256h32" stroke="#00ff99" stroke-width="8"/>
+  <path d="M176 176l-24-24M336 336l24 24M336 176l24-24M176 336l-24 24" stroke="#00ff99" stroke-width="8"/>
+
+  <text x="256" y="64" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="26" fill="#caff70">TECHIE</text>
+  <text x="256" y="468" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="16" fill="#caff70">Repair / Build</text>
+</svg>

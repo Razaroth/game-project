@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="AI portrait">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101c10"/>
+      <stop offset="1" stop-color="#0f2027"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect x="24" y="24" width="464" height="464" rx="20" fill="none" stroke="#00ff99" stroke-width="4"/>
+
+  <!-- stylized "core" -->
+  <circle cx="256" cy="256" r="110" fill="none" stroke="#00ff99" stroke-width="8"/>
+  <circle cx="256" cy="256" r="48" fill="none" stroke="#00ff99" stroke-width="8"/>
+  <path d="M256 146v-40M256 406v40M146 256h-40M406 256h40" fill="none" stroke="#00ff99" stroke-width="6"/>
+  <path d="M188 188l-28-28M324 324l28 28M324 188l28-28M188 324l-28 28" fill="none" stroke="#00ff99" stroke-width="6"/>
+
+  <text x="256" y="64" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="28" fill="#caff70">AI</text>
+  <text x="256" y="468" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="16" fill="#caff70">Superior Tech</text>
+</svg>
