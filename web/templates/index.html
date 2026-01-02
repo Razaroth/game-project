@@ -239,12 +239,13 @@
             align-items: stretch;
         }
 
-        /* Ensure top panels fit without column scrolling */
-        #main-container {
-            padding-bottom: 92px; /* keep clear of fixed bottom bar */
+        :root {
+            --bottom-bar-h: 96px;
         }
+
+        /* Ensure top panels fit without column scrolling */
         #top-section {
-            height: min(48vh, 460px);
+            height: min(44vh, 420px);
         }
         .top-sidebar {
             height: 100% !important;
@@ -518,7 +519,7 @@
         <span id="music-status" style="color:#caff70;font-size:0.82rem;margin-left:4px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
     </div>
     <!-- Main UI Layout -->
-    <div id="main-container" class="main-container" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;width:100vw;height:100vh;max-width:100vw;max-height:100vh;gap:0;">
+    <div id="main-container" class="main-container" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;width:100vw;height:calc(100vh - var(--bottom-bar-h, 96px));max-width:100vw;max-height:calc(100vh - var(--bottom-bar-h, 96px));gap:0;">
         <!-- Top Section: Player Stats (Left) and Room Info (Right) -->
         <div id="top-section" style="display:flex;flex-direction:row;justify-content:stretch;align-items:stretch;width:96vw;max-width:1400px;gap:16px;margin-top:96px;">
             <!-- Left Column: Player + Equipment -->
@@ -659,7 +660,7 @@
             </div>
         </div>
         <!-- Console Window (Bottom) -->
-        <div class="game-area" style="width:96vw;max-width:1400px;flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow:visible;margin:32px auto 96px auto;border-radius:14px;background:none;box-shadow:none;border:none;">
+        <div class="game-area" style="width:96vw;max-width:1400px;flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow:visible;margin:16px auto 16px auto;border-radius:14px;background:none;box-shadow:none;border:none;">
             <div id="console-row">
                 <div class="ui-window" style="flex:1 1 auto;min-width:0;">
                     <div class="ui-window-header" style="justify-content:center;">
@@ -748,6 +749,22 @@
         <button type="submit" style="background:linear-gradient(90deg,#00ff99 0%,#caff70 100%);color:#222;font-weight:700;padding:12px 36px;border-radius:10px;border:none;box-shadow:0 2px 12px #00ff9944;cursor:pointer;font-size:1.1rem;">Logout</button>
     </form>
     <script>
+        // Keep the main UI above the fixed bottom bar (accounts for browser zoom / font metrics)
+        (function syncBottomBarHeight() {
+            function update() {
+                const bottomBar = document.getElementById('bottom-bar');
+                if (!bottomBar) return;
+                const h = Math.ceil(bottomBar.getBoundingClientRect().height);
+                document.documentElement.style.setProperty('--bottom-bar-h', `${h}px`);
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', update);
+            } else {
+                update();
+            }
+            window.addEventListener('resize', update);
+        })();
+
         // Ensure socket is globally available before any handlers
         window.socket = io();
                         // Fight action buttons
