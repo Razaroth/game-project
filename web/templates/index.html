@@ -553,15 +553,13 @@
                     <!-- Character Equipment Panel (keeps id for JS hooks) -->
                     <div id="equip-panel" style="position:relative;width:100%;margin:0;background:#0c150c;border:none;border-radius:0;box-shadow:none;overflow:hidden;padding:8px;display:flex;gap:8px;align-items:flex-start;justify-content:flex-start;">
                     <div style="position:relative;width:80px;height:120px;background:linear-gradient(180deg,#0f2027 0%, #203a43 100%);border:1px solid #00ff99;border-radius:8px;box-shadow:inset 0 0 12px #00ff9944;flex:none;">
-                        <!-- Simple silhouette -->
-                        <svg viewBox="0 0 120 180" width="80" height="120" preserveAspectRatio="xMidYMid meet">
-                            <circle cx="60" cy="24" r="16" fill="#222" stroke="#00ff99" stroke-width="2" />
-                            <rect x="40" y="42" width="40" height="60" rx="8" fill="#222" stroke="#00ff99" stroke-width="2" />
-                            <rect x="20" y="48" width="16" height="44" rx="6" fill="#222" stroke="#00ff99" stroke-width="2" />
-                            <rect x="84" y="48" width="16" height="44" rx="6" fill="#222" stroke="#00ff99" stroke-width="2" />
-                            <rect x="42" y="104" width="14" height="56" rx="6" fill="#222" stroke="#00ff99" stroke-width="2" />
-                            <rect x="64" y="104" width="14" height="56" rx="6" fill="#222" stroke="#00ff99" stroke-width="2" />
-                        </svg>
+                        <img
+                            id="char-portrait"
+                            src="{{ url_for('static', filename='portraits/placeholder.svg') }}"
+                            alt="Character portrait"
+                            style="width:80px;height:120px;display:block;object-fit:cover;filter:drop-shadow(0 0 4px rgba(0,255,153,0.35));"
+                            onerror="this.onerror=null; this.src='{{ url_for('static', filename='portraits/placeholder.svg') }}';"
+                        />
                     </div>
                     <div style="flex:1;display:grid;grid-template-columns:repeat(2, minmax(120px, 1fr));gap:6px 12px;color:#caff70;min-width:0;overflow:auto;">
                         <div class="eq-slot" data-eq-slot="head"><b>Head:</b> <span id="eq-head">-</span></div>
@@ -764,6 +762,26 @@
             }
             window.addEventListener('resize', update);
         })();
+
+        const PORTRAIT_PLACEHOLDER_URL = "{{ url_for('static', filename='portraits/placeholder.svg') }}";
+        const PORTRAIT_BASE_URL = PORTRAIT_PLACEHOLDER_URL.replace(/placeholder\.svg(?:\?.*)?$/, '');
+
+        function normalizePortraitKey(value) {
+            if (!value) return '';
+            return String(value)
+                .trim()
+                .toLowerCase()
+                .replace(/[-\s]+/g, '_')
+                .replace(/[^a-z0-9_]/g, '');
+        }
+
+        function getCharacterPortraitUrl(info) {
+            const raceKey = normalizePortraitKey(info && info.race);
+            const classKey = normalizePortraitKey(info && info.char_class);
+            if (raceKey) return `${PORTRAIT_BASE_URL}races/${raceKey}.svg`;
+            if (classKey) return `${PORTRAIT_BASE_URL}classes/${classKey}.svg`;
+            return PORTRAIT_PLACEHOLDER_URL;
+        }
 
         // Ensure socket is globally available before any handlers
         window.socket = io();
@@ -1060,6 +1078,16 @@
                 if (raceEl) raceEl.textContent = info.race || '-';
                 const classEl = document.getElementById('char-class');
                 if (classEl) classEl.textContent = info.char_class || '-';
+
+                // Update equipment portrait
+                const portraitEl = document.getElementById('char-portrait');
+                if (portraitEl) {
+                    const nextUrl = getCharacterPortraitUrl(info);
+                    if (portraitEl.getAttribute('src') !== nextUrl) {
+                        portraitEl.setAttribute('src', nextUrl);
+                    }
+                }
+
                 const levelEl = document.getElementById('char-level');
                 if (levelEl) levelEl.textContent = (info.level !== undefined && info.level !== null) ? info.level : '-';
                 const xpInner = document.getElementById('xp-bar-inner');
