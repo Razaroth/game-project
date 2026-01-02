@@ -27,6 +27,12 @@ import os
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
+from contextlib import contextmanager
+
+try:
+    from filelock import FileLock
+except Exception:  # pragma: no cover
+    FileLock = None
 
 
 load_dotenv()
@@ -58,25 +64,59 @@ def test_cyberpunk_image():
 
 ACCOUNTS_FILE = os.path.join('data', 'accounts.json')
 
-def load_accounts():
+
+@contextmanager
+def _accounts_file_lock():
+    """Cross-process lock for accounts.json updates.
+
+    Flask/Gunicorn deployments can run multiple workers; without a file lock,
+    a stale in-memory `accounts` dict can overwrite newer equipped items.
+    """
+
+    if FileLock is None:
+        yield
+        return
+    lock = FileLock(ACCOUNTS_FILE + '.lock')
+    with lock:
+        yield
+
+
+def _load_accounts_unlocked():
     if not os.path.exists(ACCOUNTS_FILE):
         return {}
-    with open(ACCOUNTS_FILE, 'r') as f:
-        data = json.load(f)
-    # Normalize legacy account formats:
-    # - If value is a string, it may be a password hash or plaintext password.
-    #   Convert into a dict with a `password` key (hashing plaintext as needed)
+    try:
+        with open(ACCOUNTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_accounts_unlocked(accounts_dict):
+    os.makedirs(os.path.dirname(ACCOUNTS_FILE) or '.', exist_ok=True)
+    tmp_path = ACCOUNTS_FILE + '.tmp'
+    with open(tmp_path, 'w', encoding='utf-8') as f:
+        json.dump(accounts_dict, f)
+    try:
+        os.replace(tmp_path, ACCOUNTS_FILE)
+    except Exception:
+        with open(ACCOUNTS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(accounts_dict, f)
+
+
+def _normalize_accounts_inplace(data: dict) -> bool:
+    """Normalize legacy formats. Returns True if changes were made."""
+    if not isinstance(data, dict):
+        return False
     changed = False
     for user, info in list(data.items()):
         if isinstance(info, str):
             pwd = info
             # Detect common hashed formats (e.g., scrypt:, pbkdf2:)
-            if not any(pwd.startswith(prefix) for prefix in ('scrypt:', 'pbkdf2:', 'argon2:', 'sha256$')):
-                # Treat as plaintext — hash it
+            if not any(str(pwd).startswith(prefix) for prefix in ('scrypt:', 'pbkdf2:', 'argon2:', 'sha256$')):
                 try:
                     pwd = generate_password_hash(pwd)
                 except Exception:
-                    # Fallback: leave as-is
                     pass
             data[user] = {
                 'password': pwd,
@@ -87,35 +127,44 @@ def load_accounts():
                 'credits': 100
             }
             changed = True
-        elif isinstance(info, dict):
-            # Ensure minimal keys exist for newer code paths
-            if 'password' in info:
-                # nothing to do for normal dicts, but ensure optional fields exist
-                if 'email' not in info:
-                    info['email'] = ''
-                    changed = True
-                if 'verified' not in info:
-                    info['verified'] = False
-                    changed = True
-                if 'race' not in info:
-                    info['race'] = None
-                    changed = True
-                if 'char_class' not in info:
-                    info['char_class'] = None
-                    changed = True
-                if 'credits' not in info:
-                    info['credits'] = 100
-                    changed = True
-            else:
-                # Unexpected dict shape — wrap conservatively
-                data[user] = {'password': '', 'email': '', 'verified': False, 'race': None, 'char_class': None, 'credits': 100}
+            continue
+
+        if isinstance(info, dict):
+            if 'password' not in info:
+                info['password'] = ''
                 changed = True
-    if changed:
-        try:
-            save_accounts(data)
-        except Exception:
-            pass
-    return data
+            if 'email' not in info:
+                info['email'] = ''
+                changed = True
+            if 'verified' not in info:
+                info['verified'] = False
+                changed = True
+            if 'race' not in info:
+                info['race'] = None
+                changed = True
+            if 'char_class' not in info:
+                info['char_class'] = None
+                changed = True
+            if 'credits' not in info:
+                info['credits'] = 100
+                changed = True
+            continue
+
+        # Unknown type — coerce
+        data[user] = {'password': '', 'email': '', 'verified': False, 'race': None, 'char_class': None, 'credits': 100}
+        changed = True
+    return changed
+
+def load_accounts():
+    with _accounts_file_lock():
+        data = _load_accounts_unlocked()
+        changed = _normalize_accounts_inplace(data)
+        if changed:
+            try:
+                _save_accounts_unlocked(data)
+            except Exception:
+                pass
+        return data
 
 def save_accounts(accounts):
     # Background loops + command handler can write concurrently; guard writes.
@@ -126,16 +175,38 @@ def save_accounts(accounts):
         _accounts_lock = threading.Lock()
 
     with _accounts_lock:
-        # Atomic write to avoid partial/corrupt JSON on sudden shutdown.
-        tmp_path = ACCOUNTS_FILE + '.tmp'
-        with open(tmp_path, 'w') as f:
-            json.dump(accounts, f)
-        try:
-            os.replace(tmp_path, ACCOUNTS_FILE)
-        except Exception:
-            # Fallback if replace fails for any reason.
-            with open(ACCOUNTS_FILE, 'w') as f:
-                json.dump(accounts, f)
+        with _accounts_file_lock():
+            _save_accounts_unlocked(accounts)
+
+
+def _patch_account(username: str, patch: dict):
+    """Update a single account safely by merging into the latest on-disk data."""
+
+    if not username or not isinstance(patch, dict):
+        return
+
+    global accounts
+    # Keep in-process writers from racing, and keep other processes from clobbering.
+    global _accounts_lock
+    try:
+        _accounts_lock
+    except NameError:
+        _accounts_lock = threading.Lock()
+
+    with _accounts_lock:
+        with _accounts_file_lock():
+            data = _load_accounts_unlocked()
+            _normalize_accounts_inplace(data)
+            acc = data.get(username)
+            if not isinstance(acc, dict):
+                # Preserve legacy string passwords when possible.
+                pwd = acc if isinstance(acc, str) else ''
+                acc = {'password': pwd, 'email': '', 'verified': False, 'race': None, 'char_class': None, 'credits': 100}
+            acc.update(patch)
+            data[username] = acc
+            _save_accounts_unlocked(data)
+            # Refresh the in-memory view so subsequent reads reflect disk.
+            accounts = data
 
 accounts = load_accounts()
 
@@ -170,46 +241,35 @@ def _username_for_sid(sid):
 
 
 def _persist_player_state(username, player):
-    if not username or username not in accounts or player is None:
+    if not username or player is None:
         return
     try:
-        acc = accounts.get(username)
-        if not isinstance(acc, dict):
-            acc = {'password': '', 'email': '', 'verified': False}
-            accounts[username] = acc
-
-        # Update last logout timestamp for "world continues" recap
-        acc['last_logout'] = datetime.now(timezone.utc).isoformat()
-
         # If player disconnects inside a mission instance, save their entry alley instead.
         room = getattr(player, 'current_room', world.start_room)
         inst = world.get_instance_for_player(player) if hasattr(world, 'get_instance_for_player') else None
         if hasattr(world, 'is_instance_room') and world.is_instance_room(room) and inst:
             room = inst.get('entry_room') or world.start_room
 
-        acc['current_room'] = room
-        acc['inventory'] = list(getattr(player, 'inventory', acc.get('inventory', [])) or [])
-        acc['equipment'] = dict(getattr(player, 'equipment', acc.get('equipment', {})) or {})
-        acc['quests'] = dict(getattr(player, 'quests', acc.get('quests', {})) or {})
+        patch = {
+            'last_logout': datetime.now(timezone.utc).isoformat(),
+            'current_room': room,
+            'inventory': list(getattr(player, 'inventory', []) or []),
+            'equipment': dict(getattr(player, 'equipment', {}) or {}),
+            'quests': dict(getattr(player, 'quests', {}) or {}),
+            'credits': _safe_int(getattr(player, 'credits', 0), 0),
+            'xp': _safe_int(getattr(player, 'xp', 0), 0),
+            'level': _safe_int(getattr(player, 'level', 1), 1),
+            'xp_max': _safe_int(getattr(player, 'xp_max', 100), 100),
+        }
 
-        acc['credits'] = _safe_int(getattr(player, 'credits', acc.get('credits', 0)), acc.get('credits', 0))
-        acc['xp'] = _safe_int(getattr(player, 'xp', acc.get('xp', 0)), acc.get('xp', 0))
-        acc['level'] = _safe_int(getattr(player, 'level', acc.get('level', 1)), acc.get('level', 1))
-        acc['xp_max'] = _safe_int(getattr(player, 'xp_max', acc.get('xp_max', 100)), acc.get('xp_max', 100))
-
-        # Core stats
         for attr in ('hp', 'energy', 'endurance', 'willpower'):
-            acc[attr] = _safe_int(getattr(player, attr, acc.get(attr, 100)), acc.get(attr, 100))
-
-        # Combat stats (equipment and race/class can modify these)
+            patch[attr] = _safe_int(getattr(player, attr, 100), 100)
         for attr in ('strength', 'tech', 'speed'):
-            acc[attr] = _safe_int(getattr(player, attr, acc.get(attr, 10)), acc.get(attr, 10))
-
-        # Optional character name
+            patch[attr] = _safe_int(getattr(player, attr, 10), 10)
         if getattr(player, 'name', None):
-            acc['char_name'] = getattr(player, 'name')
+            patch['char_name'] = getattr(player, 'name')
 
-        save_accounts(accounts)
+        _patch_account(username, patch)
     except Exception:
         return
 
@@ -757,18 +817,19 @@ def admin_login():
 def logout():
     # Persist player state on logout if possible
     username = session.get('username')
-    if username and username in web_players and username in accounts:
+    if username:
         player = web_players.get(username)
-        _persist_player_state(username, player)
-        # Mirror disconnect cleanup so logout can't leave stale in-memory players.
-        try:
-            world.end_mission_instance(player)
-        except Exception:
-            pass
-        try:
-            del web_players[username]
-        except Exception:
-            pass
+        if player is not None:
+            _persist_player_state(username, player)
+            # Mirror disconnect cleanup so logout can't leave stale in-memory players.
+            try:
+                world.end_mission_instance(player)
+            except Exception:
+                pass
+            try:
+                del web_players[username]
+            except Exception:
+                pass
     session.pop('username', None)
     return redirect(url_for('login'))
 
@@ -1070,26 +1131,8 @@ def handle_command_event(data):
             player._last_equip = None
         except Exception:
             pass
-    # Persist progression (XP, Level) after each command
-    if username in accounts:
-        accounts[username]['xp'] = getattr(player, 'xp', accounts[username].get('xp', 0))
-        accounts[username]['level'] = getattr(player, 'level', accounts[username].get('level', 1))
-        accounts[username]['xp_max'] = getattr(player, 'xp_max', accounts[username].get('xp_max', 100))
-        # Persist equipment (e.g., after equip/unequip/use commands)
-        accounts[username]['equipment'] = dict(getattr(player, 'equipment', {}))
-        accounts[username]['credits'] = int(getattr(player, 'credits', accounts[username].get('credits', 0)))
-        accounts[username]['inventory'] = list(getattr(player, 'inventory', accounts[username].get('inventory', [])))
-        accounts[username]['current_room'] = getattr(player, 'current_room', accounts[username].get('current_room', world.start_room))
-        for attr in ('hp', 'energy', 'endurance', 'willpower'):
-            accounts[username][attr] = int(getattr(player, attr, accounts[username].get(attr, 100)))
-
-        # Persist combat stats so equipment effects survive relog.
-        for attr in ('strength', 'tech', 'speed'):
-            accounts[username][attr] = int(getattr(player, attr, accounts[username].get(attr, 10)))
-        try:
-            save_accounts(accounts)
-        except Exception:
-            pass
+    # Persist state after each command (prevents losing equipment on logout/close)
+    _persist_player_state(username, player)
 
 if __name__ == '__main__':
     # Start background loops and run the development server

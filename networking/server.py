@@ -6,6 +6,12 @@ import json
 from game.commands import handle_command
 from game.player import Player
 from game.world import World
+from contextlib import contextmanager
+
+try:
+    from filelock import FileLock
+except Exception:  # pragma: no cover
+    FileLock = None
 
 try:
     from werkzeug.security import check_password_hash, generate_password_hash
@@ -18,14 +24,25 @@ ACCOUNTS_FILE = os.path.join('data', 'accounts.json')
 _ACCOUNTS_LOCK = threading.Lock()
 
 
+@contextmanager
+def _accounts_file_lock():
+    if FileLock is None:
+        yield
+        return
+    lock = FileLock(ACCOUNTS_FILE + '.lock')
+    with lock:
+        yield
+
+
 def _load_accounts():
-    if not os.path.exists(ACCOUNTS_FILE):
-        return {}
-    try:
-        with open(ACCOUNTS_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-    except Exception:
-        return {}
+    with _accounts_file_lock():
+        if not os.path.exists(ACCOUNTS_FILE):
+            return {}
+        try:
+            with open(ACCOUNTS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception:
+            return {}
 
     # Normalize legacy formats to dict form: {password: <hash|plain>, ...}
     changed = False
@@ -72,14 +89,15 @@ def _load_accounts():
 def _save_accounts(accounts):
     os.makedirs(os.path.dirname(ACCOUNTS_FILE) or '.', exist_ok=True)
     with _ACCOUNTS_LOCK:
-        tmp_path = ACCOUNTS_FILE + '.tmp'
-        with open(tmp_path, 'w', encoding='utf-8') as f:
-            json.dump(accounts, f)
-        try:
-            os.replace(tmp_path, ACCOUNTS_FILE)
-        except Exception:
-            with open(ACCOUNTS_FILE, 'w', encoding='utf-8') as f:
+        with _accounts_file_lock():
+            tmp_path = ACCOUNTS_FILE + '.tmp'
+            with open(tmp_path, 'w', encoding='utf-8') as f:
                 json.dump(accounts, f)
+            try:
+                os.replace(tmp_path, ACCOUNTS_FILE)
+            except Exception:
+                with open(ACCOUNTS_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(accounts, f)
 
 
 def _verify_password(stored, provided) -> bool:
@@ -101,49 +119,55 @@ def _verify_password(stored, provided) -> bool:
 
 
 def _persist_player_state(accounts, username, player, world):
+    # IMPORTANT: this function may run in a different process than the web UI.
+    # Always merge into the latest on-disk accounts to avoid clobbering equipped items.
     if not username or player is None:
         return
-    if username not in accounts or not isinstance(accounts.get(username), dict):
-        accounts[username] = {'password': '', 'credits': 100}
-    acc = accounts[username]
 
-    room = getattr(player, 'current_room', world.start_room)
-    # If player is inside a mission instance, store the entry alley when possible.
-    try:
-        inst = world.get_instance_for_player(player) if hasattr(world, 'get_instance_for_player') else None
-        if hasattr(world, 'is_instance_room') and world.is_instance_room(room) and inst:
-            room = inst.get('entry_room') or world.start_room
-    except Exception:
-        pass
+    with _ACCOUNTS_LOCK:
+        with _accounts_file_lock():
+            latest = _load_accounts()
+            if username not in latest or not isinstance(latest.get(username), dict):
+                latest[username] = {'password': '', 'credits': 100}
+            acc = latest[username]
 
-    acc['current_room'] = room
-    acc['inventory'] = list(getattr(player, 'inventory', acc.get('inventory', [])) or [])
-    acc['equipment'] = dict(getattr(player, 'equipment', acc.get('equipment', {})) or {})
-    acc['quests'] = dict(getattr(player, 'quests', acc.get('quests', {})) or {})
-    acc['credits'] = int(getattr(player, 'credits', acc.get('credits', 0)) or 0)
-    acc['xp'] = int(getattr(player, 'xp', acc.get('xp', 0)) or 0)
-    acc['level'] = int(getattr(player, 'level', acc.get('level', 1)) or 1)
-    acc['xp_max'] = int(getattr(player, 'xp_max', acc.get('xp_max', 100)) or 100)
+            room = getattr(player, 'current_room', world.start_room)
+            # If player is inside a mission instance, store the entry alley when possible.
+            try:
+                inst = world.get_instance_for_player(player) if hasattr(world, 'get_instance_for_player') else None
+                if hasattr(world, 'is_instance_room') and world.is_instance_room(room) and inst:
+                    room = inst.get('entry_room') or world.start_room
+            except Exception:
+                pass
 
-    for attr in ('hp', 'energy', 'endurance', 'willpower'):
-        try:
-            acc[attr] = int(getattr(player, attr, acc.get(attr, 100)) or 0)
-        except Exception:
-            pass
-    for attr in ('strength', 'tech', 'speed'):
-        try:
-            acc[attr] = int(getattr(player, attr, acc.get(attr, 10)) or 0)
-        except Exception:
-            pass
+            acc['current_room'] = room
+            acc['inventory'] = list(getattr(player, 'inventory', acc.get('inventory', [])) or [])
+            acc['equipment'] = dict(getattr(player, 'equipment', acc.get('equipment', {})) or {})
+            acc['quests'] = dict(getattr(player, 'quests', acc.get('quests', {})) or {})
+            acc['credits'] = int(getattr(player, 'credits', acc.get('credits', 0)) or 0)
+            acc['xp'] = int(getattr(player, 'xp', acc.get('xp', 0)) or 0)
+            acc['level'] = int(getattr(player, 'level', acc.get('level', 1)) or 1)
+            acc['xp_max'] = int(getattr(player, 'xp_max', acc.get('xp_max', 100)) or 100)
 
-    if getattr(player, 'name', None):
-        acc['char_name'] = getattr(player, 'name')
-    if getattr(player, 'race', None) is not None:
-        acc['race'] = getattr(player, 'race')
-    if getattr(player, 'char_class', None) is not None:
-        acc['char_class'] = getattr(player, 'char_class')
+            for attr in ('hp', 'energy', 'endurance', 'willpower'):
+                try:
+                    acc[attr] = int(getattr(player, attr, acc.get(attr, 100)) or 0)
+                except Exception:
+                    pass
+            for attr in ('strength', 'tech', 'speed'):
+                try:
+                    acc[attr] = int(getattr(player, attr, acc.get(attr, 10)) or 0)
+                except Exception:
+                    pass
 
-    _save_accounts(accounts)
+            if getattr(player, 'name', None):
+                acc['char_name'] = getattr(player, 'name')
+            if getattr(player, 'race', None) is not None:
+                acc['race'] = getattr(player, 'race')
+            if getattr(player, 'char_class', None) is not None:
+                acc['char_class'] = getattr(player, 'char_class')
+
+            _save_accounts(latest)
 
 
 def _player_from_account(addr, username, acc, world):

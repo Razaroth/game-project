@@ -5,6 +5,7 @@ Flask-Mail>=0.9.1
 Werkzeug>=2.3
 simple-websocket>=0.10
 python-dotenv>=1.0
+filelock>=3.13
 # Optional async workers for Socket.IO (choose one)
 eventlet>=0.35 ; platform_system != "Windows" or platform_system == "Windows"
 gevent>=23.9 ; platform_system != "Windows"
