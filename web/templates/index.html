@@ -239,6 +239,52 @@
             align-items: flex-start;
         }
 
+        /* Reusable inner "window" panels (for splitting sidebar content cleanly) */
+        .ui-window {
+            width: 100%;
+            background: #101c10;
+            border: 1px solid #00ff99;
+            border-radius: 10px;
+            box-shadow: 0 0 8px #00ff9944;
+            overflow: hidden;
+        }
+        .ui-window-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(0, 255, 153, 0.35);
+        }
+        .ui-window-title {
+            color: #00ff99;
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+            margin: 0;
+            text-shadow: 0 0 6px #00ff9988;
+            white-space: nowrap;
+        }
+        .ui-window-body {
+            padding: 10px 12px;
+        }
+        .ui-window-tools {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .ui-link-btn {
+            color: #caff70;
+            text-decoration: none;
+            border: 1px solid #00ff99;
+            border-radius: 10px;
+            padding: 4px 8px;
+            background: rgba(0,0,0,0.35);
+            box-shadow: 0 0 10px #00ff9944;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
         /* Top UI panels: allow them to stretch to container width on desktop */
         @media (min-width: 901px) {
             .top-sidebar {
@@ -449,38 +495,57 @@
         <!-- Top Section: Player Stats (Left) and Room Info (Right) -->
         <div style="display:flex;flex-direction:row;justify-content:stretch;align-items:flex-start;width:96vw;max-width:1400px;gap:16px;margin-top:96px;">
             <!-- Player Stats Sidebar (minimal) -->
-            <div class="sidebar top-sidebar" style="flex:1 1 0;min-width:340px;height:420px;background:rgba(20,30,20,0.96);border:2px solid #00ff99;border-radius:14px;box-shadow:0 0 16px #00ff99cc;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:12px;overflow-y:auto;overflow-x:hidden;">
-                <div style="width:90%;background:#101c10;border-radius:10px;padding:10px 12px;box-shadow:0 0 8px #00ff9944;margin:0;flex:0 0 120px;">
-                    <h3 style="color:#00ff99;margin:0 0 8px 0;text-align:center;">Player</h3>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:10px;">
-                        <div style="text-align:left;"><b>Name:</b> <span id="char-name">Player</span></div>
-                        <div style="text-align:left;"><b>Race:</b> <span id="char-race">-</span></div>
-                        <div style="text-align:left;"><b>Class:</b> <span id="char-class">-</span></div>
-                        <div style="text-align:left;"><b>Level:</b> <span id="char-level">1</span></div>
-                        <div style="text-align:left;"><b>Credits:</b> <span id="char-credits">0</span></div>
+            <div class="sidebar top-sidebar" style="flex:1 1 0;min-width:340px;height:420px;background:transparent;border:none;border-radius:14px;box-shadow:none;padding:12px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:12px;overflow-y:auto;overflow-x:hidden;">
+                <!-- Player window -->
+                <div class="ui-window" style="flex:0 0 auto;">
+                    <div class="ui-window-header" style="justify-content:center;">
+                        <h3 class="ui-window-title" style="margin:0;">Player</h3>
                     </div>
-                    <div style="margin-top:4px;text-align:center;"><b>XP:</b></div>
-                    <div class="xp-bar" style="margin:6px auto 0 auto;max-width:280px;">
-                        <div class="xp-bar-inner" id="xp-bar-inner"></div>
-                        <span class="xp-label" id="xp-label">40 / 100</span>
+                    <div class="ui-window-body">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:10px;">
+                            <div style="text-align:left;"><b>Name:</b> <span id="char-name">Player</span></div>
+                            <div style="text-align:left;"><b>Race:</b> <span id="char-race">-</span></div>
+                            <div style="text-align:left;"><b>Class:</b> <span id="char-class">-</span></div>
+                            <div style="text-align:left;"><b>Level:</b> <span id="char-level">1</span></div>
+                            <div style="text-align:left;"><b>Credits:</b> <span id="char-credits">0</span></div>
+                        </div>
+                        <div style="margin-top:4px;text-align:center;"><b>XP:</b></div>
+                        <div class="xp-bar" style="margin:6px auto 0 auto;max-width:280px;">
+                            <div class="xp-bar-inner" id="xp-bar-inner"></div>
+                            <span class="xp-label" id="xp-label">40 / 100</span>
+                        </div>
                     </div>
                 </div>
-                <div style="width:90%;display:flex;justify-content:space-between;align-items:center;margin:0 0 6px 0;">
-                    <span style="color:#00ff99;">Map</span>
-                    <a href="/city_map" target="_blank" rel="noopener" style="color:#caff70;text-decoration:none;border:1px solid #00ff99;border-radius:10px;padding:4px 8px;background:rgba(0,0,0,0.35);box-shadow:0 0 10px #00ff9944;font-size:0.85rem;">Open City Map</a>
+
+                <!-- Map window -->
+                <div class="ui-window" style="flex:0 0 auto;">
+                    <div class="ui-window-header">
+                        <h3 class="ui-window-title">Map</h3>
+                        <div class="ui-window-tools">
+                            <a class="ui-link-btn" href="/city_map" target="_blank" rel="noopener">Open City Map</a>
+                        </div>
+                    </div>
+                    <div class="ui-window-body" style="display:flex;flex-direction:column;gap:10px;">
+                        <div id="map-area" style="width:100%;"></div>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span style="color:#caff70;font-size:0.85rem;white-space:nowrap;">Map Zoom</span>
+                            <input id="map-zoom" type="range" min="0.6" max="2" step="0.1" value="1" style="flex:1;min-width:140px;"/>
+                            <span id="map-zoom-label" style="color:#caff70;font-size:0.85rem;min-width:38px;text-align:right;">1.0x</span>
+                            <button id="map-zoom-reset" type="button" title="Reset zoom" style="background:#00ff99;color:#222;font-weight:700;padding:6px 10px;border-radius:6px;border:none;box-shadow:0 2px 8px #00ff9944;cursor:pointer;font-size:0.85rem;">Reset</button>
+                            <label style="display:flex;align-items:center;gap:6px;color:#caff70;font-size:0.85rem;">
+                                <input id="map-auto-center" type="checkbox" checked /> Auto-center
+                            </label>
+                        </div>
+                    </div>
                 </div>
-                <div id="map-area"></div>
-                <div style="width:90%;display:flex;align-items:center;gap:8px;margin:6px 0 0 0;">
-                    <span style="color:#caff70;font-size:0.85rem;white-space:nowrap;">Map Zoom</span>
-                    <input id="map-zoom" type="range" min="0.6" max="2" step="0.1" value="1" style="flex:1;"/>
-                    <span id="map-zoom-label" style="color:#caff70;font-size:0.85rem;min-width:38px;text-align:right;">1.0x</span>
-                    <button id="map-zoom-reset" type="button" title="Reset zoom" style="background:#00ff99;color:#222;font-weight:700;padding:6px 10px;border-radius:6px;border:none;box-shadow:0 2px 8px #00ff9944;cursor:pointer;font-size:0.85rem;">Reset</button>
-                    <label style="display:flex;align-items:center;gap:6px;color:#caff70;font-size:0.85rem;margin-left:8px;">
-                        <input id="map-auto-center" type="checkbox" checked /> Auto-center
-                    </label>
-                </div>
-                <!-- Character Equipment Panel -->
-                <div id="equip-panel" style="position:relative;width:90%;margin:0;background:#0c150c;border:1px solid #00ff99;border-radius:10px;box-shadow:0 0 8px #00ff9944;overflow:hidden;padding:8px;display:flex;gap:8px;align-items:flex-start;justify-content:flex-start;flex:0 0 140px;">
+
+                <!-- Equipment window -->
+                <div class="ui-window" style="flex:0 0 auto;">
+                    <div class="ui-window-header" style="justify-content:center;">
+                        <h3 class="ui-window-title" style="margin:0;">Equipment</h3>
+                    </div>
+                    <!-- Character Equipment Panel (keeps id for JS hooks) -->
+                    <div id="equip-panel" style="position:relative;width:100%;margin:0;background:#0c150c;border:none;border-radius:0;box-shadow:none;overflow:hidden;padding:8px;display:flex;gap:8px;align-items:flex-start;justify-content:flex-start;">
                     <div style="position:relative;width:80px;height:120px;background:linear-gradient(180deg,#0f2027 0%, #203a43 100%);border:1px solid #00ff99;border-radius:8px;box-shadow:inset 0 0 12px #00ff9944;flex:none;">
                         <!-- Simple silhouette -->
                         <svg viewBox="0 0 120 180" width="80" height="120" preserveAspectRatio="xMidYMid meet">
@@ -502,17 +567,28 @@
                         <div class="eq-slot" data-eq-slot="offhand"><b>Offhand:</b> <span id="eq-offhand">-</span></div>
                         <div class="eq-slot" data-eq-slot="accessory"><b>Accessory:</b> <span id="eq-accessory">-</span></div>
                     </div>
+                    </div>
                 </div>
             </div>
             <!-- Room Info Sidebar (now with battle and inventory) -->
-            <div class="sidebar top-sidebar" style="flex:1 1 0;min-width:340px;height:420px;background:rgba(20,30,20,0.96);border:2px solid #caff70;border-radius:14px;box-shadow:0 0 16px #caff70cc;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:16px;overflow:auto;">
-                <div style="width:90%;background:#101c10;border-radius:10px;padding:16px;box-shadow:0 0 8px #caff7044;margin:16px auto;">
-                    <h3 style="color:#caff70;margin:0 0 8px 0;text-align:center;">Room Info</h3>
-                    <div id="room-info" style="text-align:center;min-height:32px;"></div>
+            <div class="sidebar top-sidebar" style="flex:1 1 0;min-width:340px;height:420px;background:transparent;border:none;border-radius:14px;box-shadow:none;padding:16px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:12px;overflow:auto;">
+                <!-- Room Info window -->
+                <div class="ui-window" style="border-color:#caff70;box-shadow:0 0 8px #caff7044;">
+                    <div class="ui-window-header" style="border-bottom-color:rgba(202, 255, 112, 0.35);justify-content:center;">
+                        <h3 class="ui-window-title" style="color:#caff70;margin:0;">Room Info</h3>
+                    </div>
+                    <div class="ui-window-body">
+                        <div id="room-info" style="text-align:center;min-height:32px;"></div>
+                    </div>
                 </div>
-                <div style="width:80%;background:#101c10;border-radius:10px;padding:16px;box-shadow:0 0 8px #ff003344;margin:16px auto;">
-                    <h3 style="color:#ff0033;margin:0 0 8px 0;text-align:center;">Battle</h3>
-                    <div id="fight-info" style="display:none;width:100%;color:#caff70;">
+
+                <!-- Battle window -->
+                <div class="ui-window" style="border-color:#ff0033;box-shadow:0 0 8px #ff003344;">
+                    <div class="ui-window-header" style="border-bottom-color:rgba(255, 0, 51, 0.35);justify-content:center;">
+                        <h3 class="ui-window-title" style="color:#ff0033;margin:0;">Battle</h3>
+                    </div>
+                    <div class="ui-window-body">
+                        <div id="fight-info" style="display:none;width:100%;color:#caff70;">
                         <div style="display:flex;justify-content:space-between;align-items:center;">
                             <div id="fight-player" style="flex:1;text-align:center;">
                                 <div><b>HP:</b> <span id="fight-player-hp">100</span></div>
@@ -533,15 +609,22 @@
                             <button id="run-btn" style="background:#ff0033;color:#fff;font-weight:700;padding:10px 32px;border-radius:8px;border:none;box-shadow:0 2px 8px #ff003344;cursor:pointer;font-size:1.08rem;">Run</button>
                         </div>
                         <div id="battle-log" style="margin-top:12px;max-height:90px;overflow:auto;background:#0f1610;border:1px solid #ff0033;border-radius:8px;padding:8px 10px;font-size:0.9rem;box-shadow:0 0 6px #ff003344;"></div>
+                        </div>
                     </div>
                 </div>
-                <div style="width:80%;background:#101c10;border-radius:10px;padding:16px;box-shadow:0 0 8px #00ff9944;margin:16px auto;">
-                    <h3 style="color:#caff70;margin:0 0 8px 0;text-align:center;">Inventory</h3>
-                    <ul id="inventory-list" style="padding-left:0;text-align:center;">
-                        <li>Cyberdeck</li>
-                        <li>Neon Blade</li>
-                        <li>Stimpack</li>
-                    </ul>
+
+                <!-- Inventory window -->
+                <div class="ui-window" style="border-color:#caff70;box-shadow:0 0 8px #00ff9944;">
+                    <div class="ui-window-header" style="border-bottom-color:rgba(202, 255, 112, 0.35);justify-content:center;">
+                        <h3 class="ui-window-title" style="color:#caff70;margin:0;">Inventory</h3>
+                    </div>
+                    <div class="ui-window-body">
+                        <ul id="inventory-list" style="padding-left:0;text-align:center;margin:0;">
+                            <li>Cyberdeck</li>
+                            <li>Neon Blade</li>
+                            <li>Stimpack</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
