@@ -138,15 +138,15 @@
             height: 100%;
             min-height: 160px;
             max-height: calc(40vh - 96px);
-            background: rgba(20,30,20,0.92);
-            box-shadow: 0 0 16px #00ff99cc, 0 0 4px #00ff9944;
-            border: 2px solid #00ff99;
-            border-radius: 14px;
+            background: transparent;
+            box-shadow: none;
+            border: none;
+            border-radius: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 10px;
+            padding: 0;
         }
         #compass-title {
             color: #00ff99;
@@ -221,22 +221,34 @@
             box-shadow: 0 0 12px #00ff99cc;
         }
         .sidebar {
-            flex: none;
-            width: 600px;
-            margin-left: 64px;
-            background: rgba(20, 30, 20, 0.92);
-            border: 2px solid #00ff99;
+            flex: 1 1 0;
+            width: auto;
+            margin-left: 0;
+            background: transparent;
+            border: none;
             border-radius: 14px;
-            box-shadow: 0 0 16px #00ff99cc, 0 0 4px #00ff9944;
-            padding: 6px 6px 6px 6px;
+            box-shadow: none;
+            padding: 0;
             min-width: 0;
             color: #caff70;
-            height: 320px;
-            max-height: 320px;
-            overflow-y: auto;
+            height: auto;
+            max-height: none;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
+            align-items: stretch;
+        }
+
+        /* Ensure top panels fit without column scrolling */
+        #main-container {
+            padding-bottom: 120px; /* keep clear of fixed bottom bar */
+        }
+        #top-section {
+            height: min(48vh, 460px);
+        }
+        .top-sidebar {
+            height: 100% !important;
+            overflow: hidden !important;
         }
 
         /* Reusable inner "window" panels (for splitting sidebar content cleanly) */
@@ -253,7 +265,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            padding: 10px 12px;
+            padding: 8px 10px;
             border-bottom: 1px solid rgba(0, 255, 153, 0.35);
         }
         .ui-window-title {
@@ -265,7 +277,7 @@
             white-space: nowrap;
         }
         .ui-window-body {
-            padding: 10px 12px;
+            padding: 8px 10px;
         }
         .ui-window-tools {
             display: flex;
@@ -283,6 +295,21 @@
             box-shadow: 0 0 10px #00ff9944;
             font-size: 0.85rem;
             white-space: nowrap;
+        }
+
+        /* Inventory list: clean, centered, no default bullets */
+        #inventory-list {
+            list-style: none;
+        }
+        #inventory-list li {
+            background: #0f1610;
+            border: 1px solid #00ff99;
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin: 6px 0;
+            box-shadow: 0 0 6px #00ff9944;
+            display: inline-block;
+            min-width: 180px;
         }
 
         /* Top UI panels: allow them to stretch to container width on desktop */
@@ -314,8 +341,8 @@
         /* Map container: cleaner baseline styling */
         #map-area {
             position: relative;
-            width: 90%;
-            height: 200px;
+            width: 100%;
+            height: 160px;
             margin: 0;
             background: #0c150c;
             border: 1px solid #00ff99;
@@ -323,7 +350,7 @@
             box-shadow: 0 0 8px #00ff9944;
             overflow: hidden;
             padding: 8px;
-            flex: 0 0 200px;
+            flex: 0 0 160px;
         }
         .xp-bar-inner {
             background: linear-gradient(90deg, #00ff99 0%, #caff70 100%);
@@ -493,9 +520,9 @@
     <!-- Main UI Layout -->
     <div id="main-container" class="main-container" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;width:100vw;height:100vh;max-width:100vw;max-height:100vh;gap:0;">
         <!-- Top Section: Player Stats (Left) and Room Info (Right) -->
-        <div style="display:flex;flex-direction:row;justify-content:stretch;align-items:flex-start;width:96vw;max-width:1400px;gap:16px;margin-top:96px;">
+        <div id="top-section" style="display:flex;flex-direction:row;justify-content:stretch;align-items:stretch;width:96vw;max-width:1400px;gap:16px;margin-top:96px;">
             <!-- Player Stats Sidebar (minimal) -->
-            <div class="sidebar top-sidebar" style="flex:1 1 0;min-width:340px;height:420px;background:transparent;border:none;border-radius:14px;box-shadow:none;padding:12px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:12px;overflow-y:auto;overflow-x:hidden;">
+            <div class="sidebar top-sidebar" style="min-width:340px;background:transparent;border:none;border-radius:14px;box-shadow:none;padding:12px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:12px;overflow:hidden;">
                 <!-- Player window -->
                 <div class="ui-window" style="flex:0 0 auto;">
                     <div class="ui-window-header" style="justify-content:center;">
@@ -518,14 +545,14 @@
                 </div>
 
                 <!-- Map window -->
-                <div class="ui-window" style="flex:0 0 auto;">
+                <div class="ui-window" style="flex:1 1 auto;min-height:0;">
                     <div class="ui-window-header">
                         <h3 class="ui-window-title">Map</h3>
                         <div class="ui-window-tools">
                             <a class="ui-link-btn" href="/city_map" target="_blank" rel="noopener">Open City Map</a>
                         </div>
                     </div>
-                    <div class="ui-window-body" style="display:flex;flex-direction:column;gap:10px;">
+                    <div class="ui-window-body" style="display:flex;flex-direction:column;gap:10px;min-height:0;">
                         <div id="map-area" style="width:100%;"></div>
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                             <span style="color:#caff70;font-size:0.85rem;white-space:nowrap;">Map Zoom</span>
@@ -571,7 +598,7 @@
                 </div>
             </div>
             <!-- Room Info Sidebar (now with battle and inventory) -->
-            <div class="sidebar top-sidebar" style="flex:1 1 0;min-width:340px;height:420px;background:transparent;border:none;border-radius:14px;box-shadow:none;padding:16px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:12px;overflow:auto;">
+            <div class="sidebar top-sidebar" style="min-width:340px;background:transparent;border:none;border-radius:14px;box-shadow:none;padding:16px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:12px;overflow:hidden;">
                 <!-- Room Info window -->
                 <div class="ui-window" style="border-color:#caff70;box-shadow:0 0 8px #caff7044;">
                     <div class="ui-window-header" style="border-bottom-color:rgba(202, 255, 112, 0.35);justify-content:center;">
@@ -583,11 +610,11 @@
                 </div>
 
                 <!-- Battle window -->
-                <div class="ui-window" style="border-color:#ff0033;box-shadow:0 0 8px #ff003344;">
+                <div class="ui-window" style="flex:1 1 auto;min-height:0;border-color:#ff0033;box-shadow:0 0 8px #ff003344;">
                     <div class="ui-window-header" style="border-bottom-color:rgba(255, 0, 51, 0.35);justify-content:center;">
                         <h3 class="ui-window-title" style="color:#ff0033;margin:0;">Battle</h3>
                     </div>
-                    <div class="ui-window-body">
+                    <div class="ui-window-body" style="min-height:0;">
                         <div id="fight-info" style="display:none;width:100%;color:#caff70;">
                         <div style="display:flex;justify-content:space-between;align-items:center;">
                             <div id="fight-player" style="flex:1;text-align:center;">
@@ -631,54 +658,87 @@
         <!-- Console Window (Bottom) -->
         <div class="game-area" style="width:96vw;max-width:1400px;flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow:visible;margin:32px auto 96px auto;border-radius:14px;background:none;box-shadow:none;border:none;">
             <div id="console-row">
-                <div id="output" style="flex:1 1 auto;width:100%;height:100%;min-height:160px;max-height:calc(40vh - 96px);overflow:auto;background:rgba(20,30,20,0.92);box-shadow:0 0 16px #00ff99cc, 0 0 4px #00ff9944;border:2px solid #00ff99;border-radius:14px;padding:16px;white-space:pre-wrap;"></div>
-                <div id="compass" aria-label="Movement compass">
-                    <div id="compass-title">Move</div>
-                    <div class="compass-grid">
-                        <button class="compass-btn" type="button" data-move-dir="northwest" aria-label="Go northwest">NW</button>
-                        <button class="compass-btn" type="button" data-move-dir="north" aria-label="Go north">N</button>
-                        <button class="compass-btn" type="button" data-move-dir="northeast" aria-label="Go northeast">NE</button>
+                <div class="ui-window" style="flex:1 1 auto;min-width:0;">
+                    <div class="ui-window-header" style="justify-content:center;">
+                        <h3 class="ui-window-title" style="margin:0;">Console</h3>
+                    </div>
+                    <div class="ui-window-body" style="padding:0;">
+                        <div id="output" style="width:100%;height:100%;min-height:180px;max-height:calc(40vh - 96px);overflow:auto;background:rgba(20,30,20,0.92);border-radius:0;padding:16px;white-space:pre-wrap;"></div>
+                    </div>
+                </div>
+                <div class="ui-window" style="flex:none;width:190px;">
+                    <div class="ui-window-header" style="justify-content:center;">
+                        <h3 class="ui-window-title" style="margin:0;">Move</h3>
+                    </div>
+                    <div class="ui-window-body" style="display:flex;justify-content:center;">
+                        <div id="compass" aria-label="Movement compass">
+                            <div class="compass-grid">
+                                <button class="compass-btn" type="button" data-move-dir="northwest" aria-label="Go northwest">NW</button>
+                                <button class="compass-btn" type="button" data-move-dir="north" aria-label="Go north">N</button>
+                                <button class="compass-btn" type="button" data-move-dir="northeast" aria-label="Go northeast">NE</button>
 
-                        <button class="compass-btn" type="button" data-move-dir="west" aria-label="Go west">W</button>
-                        <div class="compass-spacer"></div>
-                        <button class="compass-btn" type="button" data-move-dir="east" aria-label="Go east">E</button>
+                                <button class="compass-btn" type="button" data-move-dir="west" aria-label="Go west">W</button>
+                                <div class="compass-spacer"></div>
+                                <button class="compass-btn" type="button" data-move-dir="east" aria-label="Go east">E</button>
 
-                        <button class="compass-btn" type="button" data-move-dir="southwest" aria-label="Go southwest">SW</button>
-                        <button class="compass-btn" type="button" data-move-dir="south" aria-label="Go south">S</button>
-                        <button class="compass-btn" type="button" data-move-dir="southeast" aria-label="Go southeast">SE</button>
+                                <button class="compass-btn" type="button" data-move-dir="southwest" aria-label="Go southwest">SW</button>
+                                <button class="compass-btn" type="button" data-move-dir="south" aria-label="Go south">S</button>
+                                <button class="compass-btn" type="button" data-move-dir="southeast" aria-label="Go southeast">SE</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <!-- Persistent Bottom Bar -->
-    <div id="bottom-bar" style="position:fixed;bottom:0;left:0;width:100vw;z-index:100;background:rgba(15,32,39,0.98);box-shadow:0 0 24px #00ff99cc, 0 0 8px #00ff9944;border-top:2px solid #00ff99;display:flex;flex-direction:row;align-items:center;justify-content:center;padding:12px 0;gap:0;">
-        <div style="display:flex;gap:18px;justify-content:center;align-items:center;flex:0 1 auto;">
-            <div style="background:#121212;color:#fff;font-weight:700;padding:8px 24px;border-radius:8px;box-shadow:0 0 8px #ff0033cc;border:1px solid #ff0033;min-width:220px;">
-                HEALTH
-                <div style="width:100%;height:10px;background:#2a2a2a;border-radius:6px;margin-top:6px;overflow:hidden;">
-                    <div id="bar-health" style="height:100%;width:100%;background:#ff0033;box-shadow:0 0 10px #ff0033cc;transition:width 1200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 1200ms cubic-bezier(0.22, 1, 0.36, 1);"></div>
+    <div id="bottom-bar" style="position:fixed;bottom:0;left:0;width:100vw;z-index:100;background:rgba(15,32,39,0.98);box-shadow:0 0 24px #00ff99cc, 0 0 8px #00ff9944;border-top:2px solid #00ff99;display:flex;flex-direction:row;align-items:center;justify-content:center;padding:8px 0;gap:12px;">
+        <div style="display:flex;gap:12px;justify-content:center;align-items:stretch;flex:0 1 auto;">
+            <div class="ui-window" style="width:220px;border-color:#ff0033;box-shadow:0 0 8px #ff003344;">
+                <div class="ui-window-header" style="border-bottom-color:rgba(255, 0, 51, 0.35);justify-content:center;">
+                    <h3 class="ui-window-title" style="color:#ff0033;margin:0;">HEALTH</h3>
                 </div>
-                <span id="bottom-health" style="margin-left:8px;">100%</span>
+                <div class="ui-window-body" style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                    <div style="width:100%;height:10px;background:#2a2a2a;border-radius:6px;overflow:hidden;">
+                        <div id="bar-health" style="height:100%;width:100%;background:#ff0033;box-shadow:0 0 10px #ff0033cc;transition:width 1200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 1200ms cubic-bezier(0.22, 1, 0.36, 1);"></div>
+                    </div>
+                    <span id="bottom-health" style="margin:0;">100%</span>
+                </div>
             </div>
-            <div style="background:#121212;color:#fff;font-weight:700;padding:8px 24px;border-radius:8px;box-shadow:0 0 8px #caff70cc;border:1px solid #caff70;min-width:220px;">
-                ENDURANCE
-                <div style="width:100%;height:10px;background:#2a2a2a;border-radius:6px;margin-top:6px;overflow:hidden;">
-                    <div id="bar-endurance" style="height:100%;width:100%;background:#caff70;box-shadow:0 0 10px #caff70cc;transition:width 1200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 1200ms cubic-bezier(0.22, 1, 0.36, 1);"></div>
+
+            <div class="ui-window" style="width:220px;border-color:#caff70;box-shadow:0 0 8px #caff7044;">
+                <div class="ui-window-header" style="border-bottom-color:rgba(202, 255, 112, 0.35);justify-content:center;">
+                    <h3 class="ui-window-title" style="color:#caff70;margin:0;">ENDURANCE</h3>
                 </div>
-                <span id="bottom-endurance" style="margin-left:8px;">100%</span>
+                <div class="ui-window-body" style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                    <div style="width:100%;height:10px;background:#2a2a2a;border-radius:6px;overflow:hidden;">
+                        <div id="bar-endurance" style="height:100%;width:100%;background:#caff70;box-shadow:0 0 10px #caff70cc;transition:width 1200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 1200ms cubic-bezier(0.22, 1, 0.36, 1);"></div>
+                    </div>
+                    <span id="bottom-endurance" style="margin:0;">100%</span>
+                </div>
             </div>
-            <div style="background:#121212;color:#fff;font-weight:700;padding:8px 24px;border-radius:8px;box-shadow:0 0 8px #ffe600cc;border:1px solid #ffe600;min-width:220px;">
-                WILLPOWER
-                <div style="width:100%;height:10px;background:#2a2a2a;border-radius:6px;margin-top:6px;overflow:hidden;">
-                    <div id="bar-willpower" style="height:100%;width:100%;background:#ffe600;box-shadow:0 0 10px #ffe600cc;transition:width 1200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 1200ms cubic-bezier(0.22, 1, 0.36, 1);"></div>
+
+            <div class="ui-window" style="width:220px;border-color:#ffe600;box-shadow:0 0 8px rgba(255,230,0,0.35);">
+                <div class="ui-window-header" style="border-bottom-color:rgba(255, 230, 0, 0.35);justify-content:center;">
+                    <h3 class="ui-window-title" style="color:#ffe600;margin:0;">WILLPOWER</h3>
                 </div>
-                <span id="bottom-willpower" style="margin-left:8px;">100%</span>
+                <div class="ui-window-body" style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                    <div style="width:100%;height:10px;background:#2a2a2a;border-radius:6px;overflow:hidden;">
+                        <div id="bar-willpower" style="height:100%;width:100%;background:#ffe600;box-shadow:0 0 10px #ffe600cc;transition:width 1200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 1200ms cubic-bezier(0.22, 1, 0.36, 1);"></div>
+                    </div>
+                    <span id="bottom-willpower" style="margin:0;">100%</span>
+                </div>
             </div>
         </div>
-        <div style="flex:0 1 700px;display:flex;justify-content:center;align-items:center;margin-left:48px;">
-            <input id="input" type="text" placeholder="Type a command..." autofocus autocomplete="off" style="max-width:600px;width:100%;margin:0 12px 0 12px;padding:12px;background:#101c10cc;color:#caff70;border:1.5px solid #00ff99;border-radius:8px;font-size:1.08rem;box-shadow:0 0 8px #00ff9944 inset;" />
-            <button id="send-btn" style="background:#00ff99;color:#222;font-weight:700;padding:12px 24px;border-radius:8px;border:none;box-shadow:0 2px 8px #00ff9944;cursor:pointer;font-size:1.08rem;margin-left:8px;">Send</button>
+
+        <div class="ui-window" style="flex:0 1 740px;max-width:740px;min-width:320px;">
+            <div class="ui-window-header" style="justify-content:center;">
+                <h3 class="ui-window-title" style="margin:0;">COMMAND</h3>
+            </div>
+            <div class="ui-window-body" style="display:flex;align-items:center;justify-content:center;gap:10px;">
+                <input id="input" type="text" placeholder="Type a command..." autofocus autocomplete="off" style="flex:1;max-width:600px;width:100%;margin:0;padding:10px;background:#101c10cc;color:#caff70;border:1.5px solid #00ff99;border-radius:8px;font-size:1.02rem;box-shadow:0 0 8px #00ff9944 inset;" />
+                <button id="send-btn" style="background:#00ff99;color:#222;font-weight:700;padding:10px 18px;border-radius:8px;border:none;box-shadow:0 2px 8px #00ff9944;cursor:pointer;font-size:1.02rem;">Send</button>
+            </div>
         </div>
     </div>
     <form action="/logout" method="get" style="width:100%; display:flex; justify-content:center; margin-top:32px;">
