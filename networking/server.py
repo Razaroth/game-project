@@ -4,6 +4,7 @@ from game.commands import handle_command
 from game.player import Player
 from game.world import World
 
+
 class MudServer:
     def __init__(self, host='0.0.0.0', port=4000):
         self.host = host

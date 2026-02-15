@@ -1,6 +1,9 @@
+<!-- markdownlint-disable MD041 -->
+
 ![CI](https://github.com/Razaroth/game-project/actions/workflows/ci.yml/badge.svg?branch=main)
 
 ## Quick Setup (Windows)
+
 - **Python:** Install Python 3.11 or 3.12.
 - **Create venv:**
 
@@ -21,21 +24,24 @@ pip install -r requirements.txt
 python webui.py
 ```
 
-- **Open UI:** Visit http://localhost:5000 and log in or register.
+- **Open UI:** Visit <http://localhost:5000> and log in or register.
 
 ### VS Code Tasks
+
 - Open this folder in VS Code.
 - Run `Install requirements` to install dependencies.
 - Run `Run web UI` to start the web server.
 - (Optional) Run `Run game server` if you want a separate game backend.
 
 ## Notes
+
 - Accounts persist in `data/accounts.json`. Rooms are in `data/rooms.json`.
 - The map shows your current room with a pulsing X.
 - To stop the server: Ctrl+C in the terminal.
- - On Render, persistence is enabled via a disk. The blueprint mounts a 1GB disk at the project root so `data/` survives restarts and deploys.
+- On Render, persistence is enabled via a disk. The blueprint mounts a 1GB disk at the project root so `data/` survives restarts and deploys.
 
 ## Copilot Checklist
+
 - Verified `.github/copilot-instructions.md` exists with project tasks.
 
 # Python MUD MMORPG (Cyberpunk Web Edition)
@@ -43,6 +49,7 @@ python webui.py
 This project is a cyberpunk-themed, text-based MMORPG with a modern web UI. It features real-time multiplayer, graphical map, and advanced character customization.
 
 ## Features
+
 - User authentication (registration, login, password hashing)
 - Email verification
 - Admin tools
@@ -58,10 +65,12 @@ This project is a cyberpunk-themed, text-based MMORPG with a modern web UI. It f
 ## Getting Started
 
 ### Requirements
+
 - Python 3.11–3.12 recommended
-   - Note: Python 3.14 is very new and some dependencies (websocket/async backends) may not yet fully support it on Windows.
+  - Note: Python 3.14 is very new and some dependencies (websocket/async backends) may not yet fully support it on Windows.
 
 ### Setup
+
 1. Clone or download this repository.
 2. (Optional) Create and activate a virtual environment:
    ```pwsh
@@ -88,29 +97,34 @@ This project is a cyberpunk-themed, text-based MMORPG with a modern web UI. It f
 6. Open your browser and navigate to `http://localhost:5000`
 
 ## Project Structure
+
 - `server.py` - Main server entry point
 - `game/` - Game logic (world, player, commands)
 - `web/` - Web UI (templates, static files)
 - `.github/copilot-instructions.md` - Copilot automation instructions
- - `.github/workflows/ci.yml` - GitHub Actions CI (syntax check + optional lint)
- - `.github/ISSUE_TEMPLATE/` - Bug/feature templates
- - `.github/PULL_REQUEST_TEMPLATE.md` - PR checklist
+- `.github/workflows/ci.yml` - GitHub Actions CI (syntax check + optional lint)
+- `.github/ISSUE_TEMPLATE/` - Bug/feature templates
+- `.github/PULL_REQUEST_TEMPLATE.md` - PR checklist
 
 ## Contributing
+
 - Fork the repo and submit pull requests
 - Follow PEP8 and best practices
- - See CONTRIBUTING.md for details
+- See CONTRIBUTING.md for details
 
 ## License
+
 MIT
 
 ## Expanding the Game
+
 - Add new commands in `game/commands.py`
 - Equip/Unequip: Use `equip <item>` and `unequip <slot>`; the equipment panel updates in the top-left UI under the map.
 - Expand the world in `data/rooms.json` or similar
 - Add player/NPC logic in `game/player.py` and `game/npc.py`
 
 ## Notes on Progression Persistence
+
 - Accounts store `xp`, `level`, and `xp_max`. On connect, the server restores these values. After each command, updated values are saved to `data/accounts.json`.
 - Level and XP are displayed in the Player panel. Level appears under Class.
 

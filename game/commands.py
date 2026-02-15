@@ -1,5 +1,6 @@
 import random
 
+
 def handle_command(command, player, world, accounts=None, save_accounts=None):
     # Search command for loot after fights
     if command == 'search':
@@ -188,9 +189,7 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
         result = world.move_player(player, direction)
         # After moving, check for roaming gangs in the new room
         mobs_here = world.get_mobs_in_room(player.current_room) if hasattr(world, 'get_mobs_in_room') else []
-        if mobs_here:
-            # 50% chance to get jumped if a mob is present
-            if random.random() < 0.5:
+        if mobs_here and random.random() < 0.5:
                 player.in_fight = True
                 # Pick one mob present for the encounter
                 opp = random.choice(mobs_here)
@@ -233,7 +232,7 @@ def handle_command(command, player, world, accounts=None, save_accounts=None):
         inv_match = next((i for i in player.inventory if i.lower() == item_name.lower()), None)
         if not inv_match:
             return f"You don't have {item_name}."
-        slot = slot_for_item.get(inv_match, None)
+        slot = slot_for_item.get(inv_match)
         if not slot:
             return f"{inv_match} cannot be equipped."
         # Equip: move from inventory to slot, unequip existing back to inventory

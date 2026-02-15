@@ -3,6 +3,7 @@
 Thanks for your interest in contributing! This guide keeps contributions smooth and consistent.
 
 ## Getting Started
+
 - Supported Python: 3.11–3.12
 - Clone and set up:
   ```pwsh
@@ -14,6 +15,7 @@ Thanks for your interest in contributing! This guide keeps contributions smooth 
   ```
 
 ## Running Locally
+
 - VS Code tasks:
   - Run `Install requirements`
   - Run `Run web UI`
@@ -21,9 +23,10 @@ Thanks for your interest in contributing! This guide keeps contributions smooth 
   ```pwsh
   python webui.py
   ```
-  Then open http://localhost:5000
+  Then open <http://localhost:5000>
 
 ## Before You Commit
+
 - Syntax check (required):
   ```pwsh
   python -m compileall -q .
@@ -35,6 +38,7 @@ Thanks for your interest in contributing! This guide keeps contributions smooth 
   ```
 
 ## Branch & PR Flow
+
 1. Create a feature branch:
    ```pwsh
    git checkout -b feat/short-description
@@ -49,17 +53,21 @@ Thanks for your interest in contributing! This guide keeps contributions smooth 
 4. Fill out the PR template and ensure CI is green.
 
 ## Where to Contribute
+
 - Game commands: `game/commands.py`
 - Player stats/logic: `game/player.py`
 - World/rooms: `data/rooms.json`, `game/world.py`
 - Web UI: `web/templates/`, `web/static/`
 
 ## Reporting Issues
+
 Use the issue templates:
+
 - Bug reports → Issues → New issue → Bug report
 - Feature ideas → Issues → New issue → Feature request
 
 ## Code Style
+
 - Prefer readable, small functions
 - Keep changes focused; avoid unrelated refactors
 - Follow project structure and existing patterns

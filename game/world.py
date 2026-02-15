@@ -191,7 +191,7 @@ class World:
 
     def _street_rooms(self):
         # Consider these rooms as streets/alleys where gangs can roam
-        return [r for r in self.rooms.keys() if any(
+        return [r for r in self.rooms if any(
             key in r for key in (
                 'plaza', 'avenue', 'street', 'alley', 'market', 'bazaar', 'neon_alley', 'scrapyard'
             )

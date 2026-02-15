@@ -1,6 +1,5 @@
-import socket
-import threading
 from networking.server import MudServer
+
 
 def main():
     server = MudServer(host='0.0.0.0', port=4000)

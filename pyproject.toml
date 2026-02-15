@@ -1,0 +1,22 @@
+[project]
+name = "cyberdelia-ex"
+version = "0.1.0"
+authors = [
+    { name = "Razaroth", email = "jlester319@gmail.com" },
+    { name = "pythoninthegrass", email = "4097471+pythoninthegrass@users.noreply.github.com" }
+]
+
+requires-python = ">=3.12,<3.13"
+
+dependencies = [
+    "eventlet>=0.35",
+    "flask>=2.3",
+    "flask-mail>=0.9.1",
+    "flask-socketio>=5.3",
+    "gevent>=23.9 ; sys_platform != 'win32'",
+    "gunicorn>=21.2",
+    "python-dotenv>=1.0",
+    "python-socketio>=5.11",
+    "simple-websocket>=0.10",
+    "werkzeug>=2.3",
+]

@@ -108,4 +108,12 @@
         <form method="POST">
             <input type="text" name="username" placeholder="Username" required />
             <input type="password" name="password" placeholder="Password" required />
+            <input type="email" name="email" placeholder="Email" required />
             <button type="submit">Register</button>
+        </form>
+        {% if error %}<p class="error">{{ error }}</p>{% endif %}
+        {% if success %}<p class="success">{{ success }}</p>{% endif %}
+        <p style="margin-top:14px;"><a href="{{ url_for('login') }}" style="color:#6a82fb;">Back to Login</a></p>
+    </div>
+</body>
+</html>

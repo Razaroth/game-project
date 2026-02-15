@@ -42,12 +42,12 @@ class Player:
             bonus += 3
         # Temporary boosts
         if getattr(self, 'attack_boost', 0):
-            bonus += int(base * getattr(self, 'attack_boost'))
+            bonus += int(base * self.attack_boost)
         return base + bonus
 
     def apply_race_class(self):
         # Set stats/abilities based on race/class
-        from game.races_classes import RACES, CLASSES
+        from game.races_classes import CLASSES, RACES
         if self.race in RACES:
             race = RACES[self.race]
             for stat, value in race["stats"].items():

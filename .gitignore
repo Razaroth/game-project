@@ -1,3 +1,31 @@
+# General
+.DS_Store
+__MACOSX/
+.AppleDouble
+.LSOverride
+Icon[
+]
+Thumbs.db
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
 # Python
 __pycache__/
 *.py[cod]
@@ -6,6 +34,9 @@ __pycache__/
 *.so
 *.egg-info/
 .Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Virtual environments
 .venv/
@@ -18,20 +49,15 @@ ENV/
 build/
 dist/
 pip-wheel-metadata/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
 
 # IDE/Editor
 .vscode/
 .idea/
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
+# Logs & Temp
 *.log
+*.tmp
+*.swp
 
 # Coverage
 .coverage
@@ -41,35 +67,15 @@ coverage.xml
 # Node (if any web assets built)
 node_modules/
 
-# Project data/secrets (keep tracked files explicit)
-# Uncomment to keep local-only accounts during dev. If you do, ensure sample files are committed.
-# data/accounts.json
-# data/*.secret.json
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.egg-info/
-.pytest_cache/
-
-# Environments
-venv/
-.env
-.env.*
-
-# OS / Editors
-.DS_Store
-.idea/
-.vscode/
-Thumbs.db
-
-# Logs & Temp
-*.log
-*.tmp
-*.swp
+# Project data/secrets
+data/accounts.json
+data/*.secret.json
 
 # Local tooling artifacts
 .github_branch_protection.json
 bp_create.graphql.copy
 *.graphql
+
+# INCLUDE
+!**/.gitkeep
+!**/*.example
